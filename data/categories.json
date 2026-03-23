@@ -1,0 +1,7 @@
+{
+  "categories": [
+    { "name": "Tajlandia", "keywords": ["tajlandia", "bangkok", "phi phi", "krabi", "phuket", "chiang mai", "koh samui"] },
+    { "name": "Bali", "keywords": ["bali", "ubud", "seminyak", "nusa penida", "kuta", "uluwatu", "canggu"] },
+    { "name": "Grecja", "keywords": ["grecja", "santorini", "kreta", "zakynthos", "mykonos", "rodos", "korfu"] }
+  ]
+}
