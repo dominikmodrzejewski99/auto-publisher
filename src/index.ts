@@ -8,6 +8,7 @@ import { generateArticle, validateArticle } from './articles/article-generator.j
 import { assembleHtml } from './articles/template.js';
 import { fetchImages } from './images/image-fetcher.js';
 import { publishToBlogger } from './publisher/blogger.js';
+import { fetchExistingTitles, isDuplicate } from './publisher/blog-checker.js';
 import {
   checkFbTokenExpiry,
   generateFbPost,
@@ -62,7 +63,7 @@ async function main() {
     trends,
     categories: categoriesData.categories,
     publishedSlugs,
-    count: 10,
+    count: 8,
   });
   console.log(`Generated ${topics.length} topics:`);
   topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
@@ -72,15 +73,39 @@ async function main() {
     return;
   }
 
+  // 5b. Check for duplicates on blog
+  console.log('\n--- Checking for duplicates on blog ---');
+  const existingTitles = await fetchExistingTitles({
+    clientId: config.googleClientId,
+    clientSecret: config.googleClientSecret,
+    refreshToken: config.googleRefreshToken,
+    blogId: config.bloggerBlogId,
+  });
+  console.log(`Existing posts on blog: ${existingTitles.size}`);
+
+  const uniqueTopics = topics.filter((t) => {
+    if (isDuplicate(t.title, existingTitles)) {
+      console.log(`  Skipping duplicate: ${t.title}`);
+      return false;
+    }
+    return true;
+  });
+  console.log(`Topics after dedup: ${uniqueTopics.length}`);
+
+  if (uniqueTopics.length === 0) {
+    console.log('All topics are duplicates. Exiting.');
+    return;
+  }
+
   // 6. Process each topic
   const fbSlots = getFbScheduleSlots(new Date());
   const newArticles: PublishedArticle[] = [];
   let successCount = 0;
   let failCount = 0;
 
-  for (let i = 0; i < topics.length; i++) {
-    const topic = topics[i];
-    console.log(`\n--- Article ${i + 1}/${topics.length}: ${topic.title} ---`);
+  for (let i = 0; i < uniqueTopics.length; i++) {
+    const topic = uniqueTopics[i];
+    console.log(`\n--- Article ${i + 1}/${uniqueTopics.length}: ${topic.title} ---`);
 
     try {
       // 6a. Generate article
@@ -159,7 +184,7 @@ async function main() {
           pageAccessToken: config.fbPageAccessToken,
           message: fbText,
           link: bloggerResult.url,
-          scheduledTime: fbSlots[i] || undefined,
+          scheduledTime: fbSlots[i] > Math.floor(Date.now() / 1000) + 600 ? fbSlots[i] : undefined,
         });
         console.log(`  FB post scheduled: ${fbResult.postId}`);
 
@@ -189,9 +214,9 @@ async function main() {
     }
 
     // Delay between articles to respect Gemini rate limits (15 req/min)
-    if (i < topics.length - 1) {
-      console.log('  Waiting 15s before next article...');
-      await new Promise((resolve) => setTimeout(resolve, 15000));
+    if (i < uniqueTopics.length - 1) {
+      console.log('  Waiting 8s before next article...');
+      await new Promise((resolve) => setTimeout(resolve, 8000));
     }
   }
 

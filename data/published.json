@@ -1,3 +1,28 @@
 {
-  "articles": []
+  "articles": [
+    {
+      "title": "Biały Lotos w Tajlandii: Gdzie kręcono 3. sezon serialu HBO?",
+      "slug": "bialy-lotos-tajlandia-hotele-lokalizacje",
+      "url": "https://www.podrozedominikanskie.pl/2026/03/biay-lotos-w-tajlandii-gdzie-krecono-3.html",
+      "category": "Tajlandia",
+      "publishedAt": "2026-03-27T12:12:26.646Z",
+      "fbPostId": "1112807518575639_122104551146955527"
+    },
+    {
+      "title": "Czy warto jechać na Bali w listopadzie? Pogoda i tanie loty",
+      "slug": "czy-warto-jechac-na-bali-w-listopadzie",
+      "url": "https://www.podrozedominikanskie.pl/2026/03/czy-warto-jechac-na-bali-w-listopadzie.html",
+      "category": "Bali",
+      "publishedAt": "2026-03-27T12:13:55.119Z",
+      "fbPostId": "1112807518575639_122104551512955527"
+    },
+    {
+      "title": "Czy bezpiecznie jest na Bali? Przewodnik dla turystów 2024",
+      "slug": "czy-bezpiecznie-jest-na-bali-przewodnik",
+      "url": "https://www.podrozedominikanskie.pl/2026/03/czy-bezpiecznie-jest-na-bali-przewodnik.html",
+      "category": "Bali",
+      "publishedAt": "2026-03-27T12:17:52.566Z",
+      "fbPostId": "1112807518575639_122104552442955527"
+    }
+  ]
 }

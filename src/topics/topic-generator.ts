@@ -29,7 +29,7 @@ export async function generateTopics(options: GenerateTopicsOptions): Promise<To
     apiKey,
     systemPrompt,
     userPrompt,
-    maxTokens: 4096,
+    maxTokens: 8192,
     temperature: 0.8,
     jsonMode: true,
   });
@@ -41,10 +41,18 @@ export async function generateTopics(options: GenerateTopicsOptions): Promise<To
   try {
     topics = JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON array from partial response
-    const match = cleaned.match(/\[[\s\S]*\]/);
-    if (!match) throw new Error(`Failed to parse topics JSON:\n${cleaned.slice(0, 500)}`);
-    topics = JSON.parse(match[0]);
+    // Try to salvage truncated JSON by extracting complete objects
+    const objects: Topic[] = [];
+    const objectRegex = /\{[^{}]*"title"\s*:\s*"[^"]+?"[^{}]*"slug"\s*:\s*"[^"]+?"[^{}]*\}/g;
+    let match;
+    while ((match = objectRegex.exec(cleaned)) !== null) {
+      try {
+        objects.push(JSON.parse(match[0]));
+      } catch { /* skip malformed */ }
+    }
+    if (objects.length === 0) throw new Error(`Failed to parse topics JSON:\n${cleaned.slice(0, 500)}`);
+    console.warn(`  Parsed ${objects.length} topics from truncated response`);
+    topics = objects;
   }
 
   return topics.filter((t) => !publishedSlugs.includes(t.slug));
@@ -58,7 +66,9 @@ function buildUserPrompt(
 ): string {
   const parts: string[] = [];
 
-  parts.push(`Zaproponuj ${count} unikalne tematy artykułów.`);
+  const today = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+  parts.push(`Dzisiejsza data: ${today}`);
+  parts.push(`Zaproponuj ${count} unikalne tematy artykułów. Używaj aktualnego roku w tytułach, nie starych dat.`);
   parts.push('');
 
   parts.push('## Kategorie:');

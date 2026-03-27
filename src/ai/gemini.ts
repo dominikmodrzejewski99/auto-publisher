@@ -17,7 +17,7 @@ export async function callGemini(options: GeminiOptions): Promise<string> {
     apiKey,
     systemPrompt,
     userPrompt,
-    model = 'gemini-flash-latest',
+    model = 'gemini-3.1-flash-lite-preview',
     maxTokens = 4096,
     temperature = 0.7,
     jsonMode = false,
