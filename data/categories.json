@@ -1,6 +1,10 @@
 {
   "categories": [
     { "name": "Tajlandia", "keywords": ["tajlandia", "bangkok", "phi phi", "krabi", "phuket", "chiang mai", "koh samui"] },
-    { "name": "Bali", "keywords": ["bali", "ubud", "seminyak", "nusa penida", "kuta", "uluwatu", "canggu"] }
+    { "name": "Bali", "keywords": ["bali", "ubud", "seminyak", "nusa penida", "kuta", "uluwatu", "canggu"] },
+    { "name": "Wietnam", "keywords": ["wietnam", "hanoi", "ho chi minh", "ha long bay", "da nang", "hoi an", "sapa"] },
+    { "name": "Kambodża", "keywords": ["kambodża", "siem reap", "angkor wat", "phnom penh", "sihanoukville", "kampot", "koh rong"] },
+    { "name": "Japonia", "keywords": ["japonia", "tokio", "kioto", "osaka", "hiroszima", "fudżi", "nara"] },
+    { "name": "Chiny", "keywords": ["chiny", "pekin", "szanghaj", "wielki mur", "hongkong", "guilin", "xi'an"] }
   ]
 }
