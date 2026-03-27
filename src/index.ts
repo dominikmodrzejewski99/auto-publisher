@@ -124,11 +124,12 @@ async function main() {
         continue;
       }
 
-      // 6c. Fetch images
+      // 6c. Fetch images (use different keywords per article for variety)
       console.log('  Fetching images...');
+      const imageKeyword = topic.keywords[i % topic.keywords.length] || topic.category;
       const images = await fetchImages({
         accessKey: config.unsplashAccessKey,
-        query: `${topic.category} ${topic.keywords[0]} travel`,
+        query: `${imageKeyword} travel landscape`,
         count: Math.min(article.headings.length + 1, 6),
       });
       console.log(`  Found ${images.length} images`);
