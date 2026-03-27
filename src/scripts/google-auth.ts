@@ -1,10 +1,13 @@
 import { google } from 'googleapis';
-import { createInterface } from 'readline';
+import http from 'http';
+import open from 'open';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const SCOPES = ['https://www.googleapis.com/auth/blogger'];
+const PORT = 3000;
+const REDIRECT_URI = `http://localhost:${PORT}`;
 
 async function main() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -15,7 +18,7 @@ async function main() {
     process.exit(1);
   }
 
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, 'urn:ietf:wg:oauth:2.0:oob');
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI);
 
   const authUrl = oauth2.generateAuthUrl({
     access_type: 'offline',
@@ -23,15 +26,32 @@ async function main() {
     prompt: 'consent',
   });
 
-  console.log('\n1. Open this URL in your browser:');
-  console.log(`\n${authUrl}\n`);
-  console.log('2. Authorize the app and copy the code.');
+  const code = await new Promise<string>((resolve, reject) => {
+    const server = http.createServer(async (req, res) => {
+      const url = new URL(req.url!, `http://localhost:${PORT}`);
+      const authCode = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const code = await new Promise<string>((resolve) => {
-    rl.question('3. Paste the code here: ', (answer) => {
-      rl.close();
-      resolve(answer.trim());
+      if (error) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<h1>Autoryzacja odrzucona</h1><p>Możesz zamknąć tę kartę.</p>');
+        server.close();
+        reject(new Error(`Authorization denied: ${error}`));
+        return;
+      }
+
+      if (authCode) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<h1>Autoryzacja udana!</h1><p>Wróć do terminala. Możesz zamknąć tę kartę.</p>');
+        server.close();
+        resolve(authCode);
+      }
+    });
+
+    server.listen(PORT, () => {
+      console.log(`\nOtwieranie przeglądarki do autoryzacji...\n`);
+      console.log(`Jeśli przeglądarka się nie otworzyła, otwórz ręcznie:\n${authUrl}\n`);
+      open(authUrl).catch(() => {});
     });
   });
 
