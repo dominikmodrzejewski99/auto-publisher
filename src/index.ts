@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { loadConfig } from './config.js';
 import { fetchTrends } from './trends/trend-fetcher.js';
+import { discoverTrendingCategories } from './trends/category-discovery.js';
 import { generateTopics } from './topics/topic-generator.js';
 import { generateArticle, validateArticle } from './articles/article-generator.js';
 import { assembleHtml } from './articles/template.js';
@@ -15,7 +16,7 @@ import {
   publishToFacebook,
   getFbScheduleSlots,
 } from './social/facebook.js';
-import type { CategoriesData, PublishedData, PublishedArticle } from './types.js';
+import type { PublishedData, PublishedArticle } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../data');
@@ -34,9 +35,13 @@ async function main() {
   console.log(`Mode: ${config.dryRun ? 'DRY RUN' : 'LIVE'}`);
 
   // 2. Load data files
-  const categoriesData = await loadJsonFile<CategoriesData>(join(DATA_DIR, 'categories.json'));
   const publishedData = await loadJsonFile<PublishedData>(join(DATA_DIR, 'published.json'));
   const publishedSlugs = publishedData.articles.map((a) => a.slug);
+
+  // 2b. Discover trending destinations
+  console.log('\n--- Discovering trending destinations ---');
+  const trendingCategories = await discoverTrendingCategories(6);
+  const categories = trendingCategories.map((c) => ({ name: c.name, keywords: c.keywords }));
 
   // 3. Check FB token
   const fbTokenStatus = await checkFbTokenExpiry({
@@ -51,7 +56,7 @@ async function main() {
 
   // 4. Fetch trends
   console.log('\n--- Fetching trends ---');
-  const trends = await fetchTrends(categoriesData.categories);
+  const trends = await fetchTrends(categories);
   console.log(`Daily trends: ${trends.dailyTrends.length}`);
   console.log(`Related queries: ${Object.keys(trends.relatedQueries).length} categories`);
   console.log(`People questions: ${Object.values(trends.peopleQuestions).reduce((s, q) => s + q.length, 0)}`);
@@ -61,7 +66,7 @@ async function main() {
   const topics = await generateTopics({
     apiKey: config.geminiApiKey,
     trends,
-    categories: categoriesData.categories,
+    categories: categories,
     publishedSlugs,
     count: 8,
   });
