@@ -38,7 +38,7 @@ export async function generateArticle(options: GenerateArticleOptions): Promise<
     '',
     `WAŻNE: Dzisiejsza data to ${new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })}. Podawaj aktualne ceny i informacje. Nie odwołuj się do starych danych.`,
     '',
-    'WYMAGANIE: Artykuł MUSI mieć MINIMUM 1500 słów. Rozwiń każdą sekcję H2 na 3-5 akapitów. Dodaj konkretne przykłady, ceny, porównania. To jest artykuł blogowy, nie skrót.',
+    'WYMAGANIE: Artykuł 800-1200 słów. Zwięźle, konkretnie, zero lania wody. Każde zdanie musi przykuwać uwagę.',
   ].join('\n');
 
   const content = await callGemini({
@@ -59,8 +59,8 @@ export async function generateArticle(options: GenerateArticleOptions): Promise<
 export function validateArticle(article: GeneratedArticle): ValidationResult {
   const reasons: string[] = [];
 
-  if (article.wordCount < 1200) {
-    reasons.push(`Article too short: ${article.wordCount} words (minimum 1500)`);
+  if (article.wordCount < 600) {
+    reasons.push(`Article too short: ${article.wordCount} words (minimum 600)`);
   }
 
   if (article.headings.length < 3) {
