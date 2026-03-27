@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { callOpenRouter } from '../ai/openrouter.js';
+import { callGemini } from '../ai/gemini.js';
 import type { Category, Topic } from '../types.js';
 import type { TrendData } from '../trends/trend-fetcher.js';
 
@@ -25,15 +25,27 @@ export async function generateTopics(options: GenerateTopicsOptions): Promise<To
 
   const userPrompt = buildUserPrompt(trends, categories, publishedSlugs, count);
 
-  const response = await callOpenRouter({
+  const response = await callGemini({
     apiKey,
     systemPrompt,
     userPrompt,
-    maxTokens: 2048,
+    maxTokens: 4096,
     temperature: 0.8,
+    jsonMode: true,
   });
 
-  const topics: Topic[] = JSON.parse(response);
+  // Gemini sometimes wraps JSON in markdown code blocks
+  const cleaned = response.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+
+  let topics: Topic[];
+  try {
+    topics = JSON.parse(cleaned);
+  } catch {
+    // Try to extract JSON array from partial response
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error(`Failed to parse topics JSON:\n${cleaned.slice(0, 500)}`);
+    topics = JSON.parse(match[0]);
+  }
 
   return topics.filter((t) => !publishedSlugs.includes(t.slug));
 }
@@ -69,6 +81,17 @@ function buildUserPrompt(
       }
     }
     parts.push('');
+  }
+
+  if (Object.keys(trends.peopleQuestions).length > 0) {
+    parts.push('## Pytania, które ludzie zadają (Google Suggest):');
+    for (const [cat, questions] of Object.entries(trends.peopleQuestions)) {
+      if (questions.length > 0) {
+        parts.push(`### ${cat}:`);
+        parts.push(questions.slice(0, 30).map((q) => `- ${q}`).join('\n'));
+        parts.push('');
+      }
+    }
   }
 
   if (publishedSlugs.length > 0) {

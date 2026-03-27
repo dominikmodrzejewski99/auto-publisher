@@ -8,15 +8,15 @@ interface OpenRouterOptions {
 }
 
 const RETRYABLE_STATUSES = [429, 500, 503];
-const MAX_RETRIES = 1;
-const INITIAL_DELAY_MS = 2000;
+const MAX_RETRIES = 3;
+const INITIAL_DELAY_MS = 5000;
 
 export async function callOpenRouter(options: OpenRouterOptions): Promise<string> {
   const {
     apiKey,
     systemPrompt,
     userPrompt,
-    model = 'google/gemini-2.0-flash-exp:free',
+    model = 'meta-llama/llama-3.3-70b-instruct:free',
     maxTokens = 4096,
     temperature = 0.7,
   } = options;

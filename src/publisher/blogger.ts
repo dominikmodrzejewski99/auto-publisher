@@ -8,6 +8,7 @@ interface PublishOptions {
   title: string;
   content: string;
   labels: string[];
+  isDraft?: boolean;
 }
 
 interface PublishResult {
@@ -16,7 +17,8 @@ interface PublishResult {
 }
 
 export async function publishToBlogger(options: PublishOptions): Promise<PublishResult> {
-  const { clientId, clientSecret, refreshToken, blogId, title, content, labels } = options;
+  const { clientId, clientSecret, refreshToken, blogId, title, content, labels, isDraft = false } =
+    options;
 
   const auth = new google.auth.OAuth2(clientId, clientSecret);
   auth.setCredentials({ refresh_token: refreshToken });
@@ -25,6 +27,7 @@ export async function publishToBlogger(options: PublishOptions): Promise<Publish
 
   const response = await blogger.posts.insert({
     blogId,
+    isDraft,
     requestBody: {
       title,
       content,

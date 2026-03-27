@@ -21,8 +21,8 @@
   "description": "",
   "dependencies": {
     "dotenv": "^17.3.1",
-    "google-trends-api": "^4.9.2",
-    "googleapis": "^171.4.0"
+    "googleapis": "^171.4.0",
+    "open": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

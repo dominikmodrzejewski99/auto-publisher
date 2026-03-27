@@ -57,7 +57,7 @@ Dostęp do Blogger API przez OAuth2.
 4. Przejdź do **APIs & Services → Credentials**
 5. Kliknij **Create Credentials → OAuth client ID**
 6. Typ: **Web application**
-7. Dodaj Authorized redirect URI: `urn:ietf:wg:oauth:2.0:oob`
+7. Dodaj Authorized redirect URI: `http://localhost:3000`
 8. Skopiuj **Client ID** i **Client Secret** do `.env`
 
 **Krok B — Uzyskaj Refresh Token:**
@@ -66,7 +66,7 @@ Dostęp do Blogger API przez OAuth2.
 npm run auth:google
 ```
 
-Skrypt otworzy URL do autoryzacji. Zaloguj się kontem Google, które jest właścicielem bloga, skopiuj kod i wklej w terminalu. Otrzymasz `GOOGLE_REFRESH_TOKEN`.
+Skrypt otworzy przeglądarkę z ekranem autoryzacji Google. Zaloguj się kontem, które jest właścicielem bloga, i zatwierdź dostęp. Token zostanie przechwycony automatycznie i wyświetlony w terminalu.
 
 ### 4. BLOGGER_BLOG_ID
 

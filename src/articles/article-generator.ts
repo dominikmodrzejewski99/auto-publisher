@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { callOpenRouter } from '../ai/openrouter.js';
+import { callGemini } from '../ai/gemini.js';
 import type { Topic, GeneratedArticle } from '../types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,11 +31,11 @@ export async function generateArticle(options: GenerateArticleOptions): Promise<
     `Meta description: ${topic.metaDescription}`,
   ].join('\n');
 
-  const content = await callOpenRouter({
+  const content = await callGemini({
     apiKey,
     systemPrompt,
     userPrompt,
-    maxTokens: 8192,
+    maxTokens: 16384,
     temperature: 0.7,
   });
 

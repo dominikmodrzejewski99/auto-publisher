@@ -13,7 +13,7 @@ function requireEnv(name: string): string {
 
 export function loadConfig(): Config {
   return {
-    openRouterApiKey: requireEnv('OPENROUTER_API_KEY'),
+    geminiApiKey: requireEnv('GEMINI_API_KEY'),
     unsplashAccessKey: requireEnv('UNSPLASH_ACCESS_KEY'),
     googleClientId: requireEnv('GOOGLE_CLIENT_ID'),
     googleClientSecret: requireEnv('GOOGLE_CLIENT_SECRET'),

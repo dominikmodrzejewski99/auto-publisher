@@ -1,5 +1,5 @@
 export interface Config {
-  openRouterApiKey: string;
+  geminiApiKey: string;
   unsplashAccessKey: string;
   googleClientId: string;
   googleClientSecret: string;

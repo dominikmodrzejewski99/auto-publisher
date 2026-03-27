@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { callOpenRouter } from '../ai/openrouter.js';
+import { callGemini } from '../ai/gemini.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -74,7 +74,7 @@ export async function generateFbPost(options: GenerateFbPostOptions): Promise<st
     `Link: ${articleUrl}`,
   ].join('\n');
 
-  return callOpenRouter({
+  return callGemini({
     apiKey,
     systemPrompt,
     userPrompt,

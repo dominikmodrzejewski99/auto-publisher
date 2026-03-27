@@ -53,15 +53,16 @@ async function main() {
   const trends = await fetchTrends(categoriesData.categories);
   console.log(`Daily trends: ${trends.dailyTrends.length}`);
   console.log(`Related queries: ${Object.keys(trends.relatedQueries).length} categories`);
+  console.log(`People questions: ${Object.values(trends.peopleQuestions).reduce((s, q) => s + q.length, 0)}`);
 
   // 5. Generate topics
   console.log('\n--- Generating topics ---');
   const topics = await generateTopics({
-    apiKey: config.openRouterApiKey,
+    apiKey: config.geminiApiKey,
     trends,
     categories: categoriesData.categories,
     publishedSlugs,
-    count: 3,
+    count: 10,
   });
   console.log(`Generated ${topics.length} topics:`);
   topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
@@ -85,7 +86,7 @@ async function main() {
       // 6a. Generate article
       console.log('  Generating article...');
       const article = await generateArticle({
-        apiKey: config.openRouterApiKey,
+        apiKey: config.geminiApiKey,
         topic,
       });
       console.log(`  Words: ${article.wordCount}, H2s: ${article.headings.length}`);
@@ -146,7 +147,7 @@ async function main() {
       if (fbTokenStatus.valid) {
         console.log('  Generating FB post...');
         const fbText = await generateFbPost({
-          apiKey: config.openRouterApiKey,
+          apiKey: config.geminiApiKey,
           articleTitle: topic.title,
           articleDescription: topic.metaDescription,
           articleUrl: bloggerResult.url,
@@ -185,6 +186,12 @@ async function main() {
     } catch (error) {
       console.error(`  Failed: ${error}`);
       failCount++;
+    }
+
+    // Delay between articles to respect Gemini rate limits (15 req/min)
+    if (i < topics.length - 1) {
+      console.log('  Waiting 15s before next article...');
+      await new Promise((resolve) => setTimeout(resolve, 15000));
     }
   }
 
