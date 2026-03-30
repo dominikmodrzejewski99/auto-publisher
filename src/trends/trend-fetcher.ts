@@ -143,34 +143,89 @@ async function fetchRelatedQueries(
   return result;
 }
 
-/** Question prefixes that reflect what people ask on FB groups and forums */
+/** Question prefixes combined with main destination keyword (e.g. "ile kosztuje tajlandia") */
 const QUESTION_PREFIXES = [
+  // Koszty i budżet
   'ile kosztuje',
+  'ile pieniędzy zabrać do',
+  // Planowanie podróży
   'kiedy jechać do',
   'kiedy najlepiej lecieć do',
   'jak tanio polecieć do',
   'co zabrać do',
-  'czy warto jechać do',
-  'czy bezpiecznie',
-  'jaki hotel',
-  'gdzie nocleg',
-  'ubezpieczenie',
-  'wiza',
-  'szczepienia',
-  'pogoda',
-  'lot przez dubaj',
-  'odszkodowanie za lot',
-  'odwołany lot',
-  'all inclusive',
-  'last minute',
-  'wakacje z dziećmi',
   'na własną rękę',
-  'ile pieniędzy zabrać do',
-  'jak dojechać z lotniska',
-  'transport',
-  'jedzenie',
+  // Bezpieczeństwo
+  'czy bezpiecznie',
   'niebezpieczeństwa',
   'oszustwa',
+  // Noclegi
+  'jaki hotel',
+  'gdzie nocleg',
+  'all inclusive',
+  // Wizy i formalności
+  'wiza',
+  'szczepienia',
+  // Transport na miejscu
+  'jak dojechać z lotniska',
+  'transport',
+  // Jedzenie i kultura
+  'jedzenie',
+  'street food',
+  'co zobaczyć',
+  'co robić wieczorem',
+  // Pogoda i sezon
+  'pogoda',
+  'pora deszczowa',
+];
+
+/** Sub-location prefixes — combined with specific places like "phuket", "ubud", "siem reap" */
+const SUB_LOCATION_PREFIXES = [
+  'hotel',
+  'gdzie spać',
+  'nocleg',
+  'co zobaczyć',
+  'co robić',
+  'pogoda',
+  'restauracje',
+  'plaża',
+  'jak dojechać',
+  'ile kosztuje',
+  'atrakcje',
+];
+
+/** General travel queries not tied to any specific destination */
+const GENERAL_TRAVEL_QUERIES = [
+  'czy latają samoloty przez dubaj',
+  'czy latają samoloty przez turcję',
+  'odszkodowanie za odwołany lot',
+  'odszkodowanie za opóźniony lot',
+  'odszkodowanie air arabia',
+  'odszkodowanie ryanair',
+  'odszkodowanie wizzair',
+  'odwołany lot co robić',
+  'opóźniony lot prawa pasażera',
+  'tanie loty do azji',
+  'tanie loty z polski',
+  'loty przez istanbul',
+  'loty przez doha',
+  'przesiadka w dubaju',
+  'przesiadka w stambule',
+  'tranzyt przez dubaj',
+  'ubezpieczenie podróżne azja',
+  'ubezpieczenie podróżne co pokrywa',
+  'szczepienia przed wyjazdem do azji',
+  'malaria azja',
+  'jak tanio polecieć do azji',
+  'najlepsze linie lotnicze do azji',
+  'bagaż podręczny linie lotnicze',
+  'karta płatnicza za granicą',
+  'wymiana walut azja',
+  'eSIM azja',
+  'internet za granicą',
+  'travel insurance azja',
+  'wizz air azja',
+  'lot czarterowy azja',
+  'bezpieczeństwo lotów bliski wschód',
 ];
 
 /** Fetch real questions people ask via Google Suggest API */
@@ -184,11 +239,11 @@ async function fetchPeopleQuestions(
     const keyword = category.keywords[0];
 
     const queries = QUESTION_PREFIXES.map((prefix) => `${prefix} ${keyword}`);
-    // Also add destination-specific sub-keywords
-    for (const subKeyword of category.keywords.slice(1, 4)) {
-      queries.push(`${subKeyword} hotel`);
-      queries.push(`${subKeyword} pogoda`);
-      queries.push(`${subKeyword} co robić`);
+    // Add specific place queries (e.g. "phuket hotel", "ubud gdzie spać", "siem reap atrakcje")
+    for (const subKeyword of category.keywords.slice(1)) {
+      for (const prefix of SUB_LOCATION_PREFIXES) {
+        queries.push(`${subKeyword} ${prefix}`);
+      }
     }
 
     // Fetch in batches to avoid hammering the API
@@ -210,6 +265,24 @@ async function fetchPeopleQuestions(
 
     result[category.name] = [...allSuggestions];
   }
+
+  // Fetch general travel questions (not destination-specific)
+  const generalSuggestions = new Set<string>();
+  for (let i = 0; i < GENERAL_TRAVEL_QUERIES.length; i += 5) {
+    const batch = GENERAL_TRAVEL_QUERIES.slice(i, i + 5);
+    const results = await Promise.all(
+      batch.map((q) => fetchGoogleSuggest(q)),
+    );
+    for (const suggestions of results) {
+      for (const s of suggestions) {
+        generalSuggestions.add(s);
+      }
+    }
+    if (i + 5 < GENERAL_TRAVEL_QUERIES.length) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+  result['Ogólne podróże'] = [...generalSuggestions];
 
   return result;
 }
