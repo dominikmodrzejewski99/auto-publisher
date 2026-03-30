@@ -24,7 +24,7 @@ Każdy tytuł musi obiecywać rozwiązanie konkretnego problemu:
 
 ## Zasady
 
-1. Każdy temat musi być unikalny i nie powtarzać się z już opublikowanymi.
+1. KLUCZOWE: Każdy temat musi być unikalny. Przeczytaj DOKŁADNIE listę już opublikowanych artykułów. Nie powtarzaj tych samych tematów, nawet w innym ujęciu (np. jeśli jest "Ile kosztuje Bali" nie rób "Budżet na Bali"). Szukaj zupełnie nowych kątów, miejsc, problemów.
 2. Tematy muszą bazować na aktualnych trendach i pytaniach ludzi.
 3. Tytuły: chwytliwe, emocjonalne, 50-75 znaków. MUSZĄ zawierać aktualny rok jeśli dotyczą cen/przepisów.
 4. Meta description: 150-160 znaków, buduje napięcie, zachęca do kliknięcia.

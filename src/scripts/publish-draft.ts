@@ -38,6 +38,7 @@ async function main() {
     trends,
     categories: categoriesData.categories,
     publishedSlugs,
+    existingBlogTitles: [],
     count: 1,
   });
 
@@ -65,12 +66,16 @@ async function main() {
     return;
   }
 
-  // 4. Fetch images
+  // 4. Fetch images — per section
   console.log('Fetching images...');
+  const heroQuery = `${topic.category} travel landscape`;
+  const sectionQueries = article.headings.slice(0, 5).map((heading) => {
+    const cleanHeading = heading.replace(/[?!.,;:()]/g, '').replace(/\d{4}/g, '').trim();
+    return `${cleanHeading} ${topic.category} travel`;
+  });
   const images = await fetchImages({
     accessKey: config.unsplashAccessKey,
-    query: `${topic.category} ${topic.keywords[0]} travel`,
-    count: Math.min(article.headings.length + 1, 6),
+    queries: [heroQuery, ...sectionQueries],
   });
   console.log(`Found ${images.length} images`);
 

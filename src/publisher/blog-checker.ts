@@ -7,18 +7,26 @@ interface CheckDuplicateOptions {
   blogId: string;
 }
 
+export interface ExistingTitlesResult {
+  /** Normalized titles for dedup matching */
+  normalizedSet: Set<string>;
+  /** Original titles for passing to AI prompt */
+  rawTitles: string[];
+}
+
 /**
  * Fetches all post titles from the blog to check for duplicates.
- * Returns a Set of lowercase titles for fast lookup.
+ * Returns both normalized set for matching and raw titles for AI context.
  */
-export async function fetchExistingTitles(options: CheckDuplicateOptions): Promise<Set<string>> {
+export async function fetchExistingTitles(options: CheckDuplicateOptions): Promise<ExistingTitlesResult> {
   const { clientId, clientSecret, refreshToken, blogId } = options;
 
   const auth = new google.auth.OAuth2(clientId, clientSecret);
   auth.setCredentials({ refresh_token: refreshToken });
 
   const blogger = google.blogger({ version: 'v3', auth });
-  const titles = new Set<string>();
+  const normalizedSet = new Set<string>();
+  const rawTitles: string[] = [];
 
   let pageToken: string | undefined;
   do {
@@ -32,14 +40,15 @@ export async function fetchExistingTitles(options: CheckDuplicateOptions): Promi
 
     for (const post of response.data.items ?? []) {
       if (post.title) {
-        titles.add(normalizeTitle(post.title));
+        normalizedSet.add(normalizeTitle(post.title));
+        rawTitles.push(post.title);
       }
     }
 
     pageToken = response.data.nextPageToken ?? undefined;
   } while (pageToken);
 
-  return titles;
+  return { normalizedSet, rawTitles };
 }
 
 /**

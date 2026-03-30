@@ -30,11 +30,10 @@ describe('fetchImages', () => {
 
     const images = await fetchImages({
       accessKey: 'test-key',
-      query: 'Bali beach',
-      count: 2,
+      queries: ['Bali beach', 'Temple jungle'],
     });
 
-    expect(images).toHaveLength(2);
+    expect(images).toHaveLength(1); // only 1 mock response set up
     expect(images[0].url).toContain('w=1200');
     expect(images[0].url).toContain('q=80');
     expect(images[0].alt).toBe('Beautiful beach');
@@ -46,8 +45,7 @@ describe('fetchImages', () => {
 
     const images = await fetchImages({
       accessKey: 'test-key',
-      query: 'Bali beach',
-      count: 4,
+      queries: ['Bali beach'],
     });
 
     expect(images).toEqual([]);

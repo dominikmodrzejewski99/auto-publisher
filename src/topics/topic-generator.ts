@@ -12,18 +12,19 @@ interface GenerateTopicsOptions {
   trends: TrendData;
   categories: Category[];
   publishedSlugs: string[];
+  existingBlogTitles: string[];
   count: number;
 }
 
 export async function generateTopics(options: GenerateTopicsOptions): Promise<Topic[]> {
-  const { apiKey, trends, categories, publishedSlugs, count } = options;
+  const { apiKey, trends, categories, publishedSlugs, existingBlogTitles, count } = options;
 
   const systemPrompt = await readFile(
     join(__dirname, '../../prompts/topic-system.md'),
     'utf-8',
   );
 
-  const userPrompt = buildUserPrompt(trends, categories, publishedSlugs, count);
+  const userPrompt = buildUserPrompt(trends, categories, publishedSlugs, existingBlogTitles, count);
 
   const response = await callGemini({
     apiKey,
@@ -62,6 +63,7 @@ function buildUserPrompt(
   trends: TrendData,
   categories: Category[],
   publishedSlugs: string[],
+  existingBlogTitles: string[],
   count: number,
 ): string {
   const parts: string[] = [];
@@ -104,9 +106,16 @@ function buildUserPrompt(
     }
   }
 
+  // Show ALL existing blog titles so AI can avoid semantic duplicates
+  if (existingBlogTitles.length > 0) {
+    parts.push('## Artykuły już opublikowane na blogu (NIE POWTARZAJ tych tematów ani podobnych):');
+    parts.push(existingBlogTitles.map((t) => `- ${t}`).join('\n'));
+    parts.push('');
+  }
+
   if (publishedSlugs.length > 0) {
-    parts.push('## Już opublikowane (unikaj):');
-    parts.push(publishedSlugs.slice(-50).join(', '));
+    parts.push('## Slugi już opublikowane (unikaj):');
+    parts.push(publishedSlugs.join(', '));
   }
 
   return parts.join('\n');

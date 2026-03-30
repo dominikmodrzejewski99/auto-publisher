@@ -7,7 +7,7 @@ import { discoverTrendingCategories } from './trends/category-discovery.js';
 import { generateTopics } from './topics/topic-generator.js';
 import { generateArticle, validateArticle } from './articles/article-generator.js';
 import { assembleHtml } from './articles/template.js';
-import { fetchImages } from './images/image-fetcher.js';
+import { fetchImages, loadUsedImageIds, saveUsedImageIds } from './images/image-fetcher.js';
 import { publishToBlogger } from './publisher/blogger.js';
 import { fetchExistingTitles, isDuplicate } from './publisher/blog-checker.js';
 import {
@@ -38,6 +38,9 @@ async function main() {
   const publishedData = await loadJsonFile<PublishedData>(join(DATA_DIR, 'published.json'));
   const publishedSlugs = publishedData.articles.map((a) => a.slug);
 
+  // 2a. Load used image IDs from previous runs
+  await loadUsedImageIds();
+
   // 2b. Discover trending destinations
   console.log('\n--- Discovering trending destinations ---');
   const trendingCategories = await discoverTrendingCategories(6);
@@ -54,20 +57,31 @@ async function main() {
     console.warn(`WARNING: ${fbTokenStatus.message}`);
   }
 
-  // 4. Fetch trends
+  // 4. Fetch existing blog titles (before topic generation for better dedup)
+  console.log('\n--- Fetching existing blog titles ---');
+  const existingTitlesResult = await fetchExistingTitles({
+    clientId: config.googleClientId,
+    clientSecret: config.googleClientSecret,
+    refreshToken: config.googleRefreshToken,
+    blogId: config.bloggerBlogId,
+  });
+  console.log(`Existing posts on blog: ${existingTitlesResult.rawTitles.length}`);
+
+  // 5. Fetch trends
   console.log('\n--- Fetching trends ---');
   const trends = await fetchTrends(categories);
   console.log(`Daily trends: ${trends.dailyTrends.length}`);
   console.log(`Related queries: ${Object.keys(trends.relatedQueries).length} categories`);
   console.log(`People questions: ${Object.values(trends.peopleQuestions).reduce((s, q) => s + q.length, 0)}`);
 
-  // 5. Generate topics
+  // 6. Generate topics (with full blog titles for AI dedup)
   console.log('\n--- Generating topics ---');
   const topics = await generateTopics({
     apiKey: config.geminiApiKey,
     trends,
     categories: categories,
     publishedSlugs,
+    existingBlogTitles: existingTitlesResult.rawTitles,
     count: 8,
   });
   console.log(`Generated ${topics.length} topics:`);
@@ -78,18 +92,9 @@ async function main() {
     return;
   }
 
-  // 5b. Check for duplicates on blog
-  console.log('\n--- Checking for duplicates on blog ---');
-  const existingTitles = await fetchExistingTitles({
-    clientId: config.googleClientId,
-    clientSecret: config.googleClientSecret,
-    refreshToken: config.googleRefreshToken,
-    blogId: config.bloggerBlogId,
-  });
-  console.log(`Existing posts on blog: ${existingTitles.size}`);
-
+  // 6b. Double-check for duplicates against blog (programmatic safety net)
   const uniqueTopics = topics.filter((t) => {
-    if (isDuplicate(t.title, existingTitles)) {
+    if (isDuplicate(t.title, existingTitlesResult.normalizedSet)) {
       console.log(`  Skipping duplicate: ${t.title}`);
       return false;
     }
@@ -129,13 +134,20 @@ async function main() {
         continue;
       }
 
-      // 6c. Fetch images (use different keywords per article for variety)
+      // 6c. Fetch images — one per section, query tailored to H2 content
       console.log('  Fetching images...');
-      const imageKeyword = topic.keywords[i % topic.keywords.length] || topic.category;
+      const heroQuery = `${topic.category} travel landscape`;
+      const sectionQueries = article.headings.slice(0, 5).map((heading) => {
+        // Build a specific query from the H2 heading + category
+        const cleanHeading = heading
+          .replace(/[?!.,;:()]/g, '')
+          .replace(/\d{4}/g, '') // remove year
+          .trim();
+        return `${cleanHeading} ${topic.category} travel`;
+      });
       const images = await fetchImages({
         accessKey: config.unsplashAccessKey,
-        query: `${imageKeyword} travel landscape`,
-        count: Math.min(article.headings.length + 1, 6),
+        queries: [heroQuery, ...sectionQueries],
       });
       console.log(`  Found ${images.length} images`);
 
@@ -226,7 +238,10 @@ async function main() {
     }
   }
 
-  // 7. Update published.json
+  // 7. Save used image IDs for next run
+  await saveUsedImageIds();
+
+  // 8. Update published.json
   publishedData.articles.push(...newArticles);
   await writeFile(
     join(DATA_DIR, 'published.json'),
@@ -234,7 +249,7 @@ async function main() {
     'utf-8',
   );
 
-  // 8. Report
+  // 9. Report
   console.log('\n=== Report ===');
   console.log(`Success: ${successCount}`);
   console.log(`Failed: ${failCount}`);
