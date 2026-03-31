@@ -196,7 +196,9 @@ function insertHeroImage(html: string, image: UnsplashImage): string {
 
 function insertSectionImages(html: string, images: UnsplashImage[]): string {
   let imageIndex = 0;
-  return html.replace(/<h2/g, (match) => {
+  const faqStart = html.indexOf('<div class="faq-section"');
+  return html.replace(/<h2/g, (match, offset) => {
+    if (faqStart !== -1 && offset >= faqStart) return match;
     if (imageIndex < images.length) {
       const img = images[imageIndex];
       imageIndex++;
@@ -223,14 +225,15 @@ ${items}
 }
 
 function insertTocAfterIntro(html: string, toc: string): string {
-  // Insert after first </p> that comes after </h1>
+  const firstH2 = html.indexOf('<h2');
+  if (firstH2 === -1) return html + toc;
+
+  const imgBeforeH2 = html.lastIndexOf('<img ', firstH2);
   const h1End = html.indexOf('</h1>');
-  if (h1End === -1) return toc + html;
 
-  // Find the next </p> after h1 (end of intro paragraph) or after hero image
-  const afterH1 = html.indexOf('</p>', h1End);
-  if (afterH1 === -1) return html + toc;
+  if (imgBeforeH2 > h1End + 50) {
+    return html.slice(0, imgBeforeH2) + '\n' + toc + '\n' + html.slice(imgBeforeH2);
+  }
 
-  const insertPoint = afterH1 + '</p>'.length;
-  return html.slice(0, insertPoint) + '\n' + toc + '\n' + html.slice(insertPoint);
+  return html.slice(0, firstH2) + '\n' + toc + '\n' + html.slice(firstH2);
 }

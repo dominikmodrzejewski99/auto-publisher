@@ -139,11 +139,18 @@ async function main() {
       // 6c. Fetch images — one per section, query tailored to H2 content
       console.log('  Fetching images...');
       const heroQuery = `${topic.category} travel landscape`;
-      const sectionQueries = article.headings.slice(0, 5).map((heading) => {
-        // Build a specific query from the H2 heading + category
+      const contentHeadings = article.headings.filter((h) => {
+        const lower = h.toLowerCase();
+        return !lower.includes('najczęściej zadawane') && !lower.includes('faq') && !lower.includes('podsumowanie');
+      });
+      const sectionQueries = contentHeadings.slice(0, 5).map((heading) => {
         const cleanHeading = heading
           .replace(/[?!.,;:()]/g, '')
-          .replace(/\d{4}/g, '') // remove year
+          .replace(/\d{4}/g, '')
+          .replace(/[ąćęłńóśźż]/g, (c) => {
+            const map: Record<string, string> = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
+            return map[c] || c;
+          })
           .trim();
         return `${cleanHeading} ${topic.category} travel`;
       });
