@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { callGemini } from '../ai/gemini.js';
 import { researchTopic } from '../research/web-research.js';
-import type { Topic, GeneratedArticle } from '../types.js';
+import type { Topic, GeneratedArticle, FaqItem } from '../types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -52,8 +52,9 @@ export async function generateArticle(options: GenerateArticleOptions): Promise<
 
   const headings = extractH2Headings(content);
   const wordCount = countWords(content);
+  const faqItems = extractFaqItems(content);
 
-  return { content, wordCount, headings };
+  return { content, wordCount, headings, faqItems };
 }
 
 export function validateArticle(article: GeneratedArticle): ValidationResult {
@@ -87,4 +88,17 @@ function extractH2Headings(html: string): string[] {
 function countWords(html: string): number {
   const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.split(' ').filter((w) => w.length > 0).length;
+}
+
+function extractFaqItems(html: string): FaqItem[] {
+  const items: FaqItem[] = [];
+  const regex = /<div class="faq-item">\s*<h3>(.*?)<\/h3>\s*<p>(.*?)<\/p>\s*<\/div>/gis;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    items.push({
+      question: match[1].replace(/<[^>]*>/g, '').trim(),
+      answer: match[2].replace(/<[^>]*>/g, '').trim(),
+    });
+  }
+  return items;
 }

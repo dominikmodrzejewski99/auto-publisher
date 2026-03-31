@@ -26,27 +26,27 @@ describe('assembleHtml', () => {
 <p>Summary.</p>`;
 
   it('should produce valid HTML with inline styles', () => {
-    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'] });
+    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'], faqItems: [] });
     expect(html).toContain('class="blog-article-container"');
     expect(html).toContain('font-family');
   });
 
   it('should generate table of contents from headings', () => {
-    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'] });
+    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'], faqItems: [] });
     expect(html).toContain('class="table-of-contents"');
     expect(html).toContain('Dzień 1-3: Ubud');
     expect(html).toContain('href="#');
   });
 
   it('should insert hero image after H1', () => {
-    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'] });
+    const html = assembleHtml({ topic, content, images, headings: ['Dzień 1-3: Ubud', 'Dzień 4-7: Seminyak', 'Podsumowanie'], faqItems: [] });
     const h1Index = html.indexOf('</h1>');
     const imgIndex = html.indexOf('<img');
     expect(imgIndex).toBeGreaterThan(h1Index);
   });
 
   it('should include Unsplash attribution', () => {
-    const html = assembleHtml({ topic, content, images, headings: ['A', 'B', 'C'] });
+    const html = assembleHtml({ topic, content, images, headings: ['A', 'B', 'C'], faqItems: [] });
     expect(html).toContain('Unsplash');
   });
 });

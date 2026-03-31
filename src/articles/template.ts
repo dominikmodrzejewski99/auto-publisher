@@ -1,10 +1,11 @@
-import type { Topic, UnsplashImage } from '../types.js';
+import type { Topic, UnsplashImage, FaqItem } from '../types.js';
 
 interface AssembleOptions {
   topic: Topic;
   content: string;
   images: UnsplashImage[];
   headings: string[];
+  faqItems: FaqItem[];
 }
 
 const INLINE_STYLES = `
@@ -31,10 +32,16 @@ const INLINE_STYLES = `
   .table-of-contents li { margin-bottom: 10px; }
   .table-of-contents a { font-size: 1.1em; text-decoration: none; color: #0d47a1; font-weight: 700; }
   .table-of-contents a:hover { text-decoration: underline; }
+  .faq-section { margin-top: 40px; padding: 25px; background-color: #f9f9f9; border-radius: 12px; border: 1px solid #e0e0e0; }
+  .faq-section h2 { font-size: 1.8em; margin-top: 0; border-bottom: 3px solid #fbc02d; padding-bottom: 8px; }
+  .faq-item { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; }
+  .faq-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+  .faq-item h3 { font-size: 1.2em; margin-bottom: 8px; color: #1a1a1a; }
+  .faq-item p { margin-bottom: 0; }
 </style>`;
 
 export function assembleHtml(options: AssembleOptions): string {
-  const { topic, content, images, headings } = options;
+  const { topic, content, images, headings, faqItems } = options;
 
   // Add IDs to H2 headings in content
   let processedContent = addHeadingIds(content);
@@ -59,11 +66,108 @@ export function assembleHtml(options: AssembleOptions): string {
     ? `<p style="font-size: 0.85em; color: #999; margin-top: 40px;">Zdjęcia: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a></p>`
     : '';
 
+  // Build Schema.org JSON-LD structured data
+  const jsonLd = buildJsonLd(topic, images, faqItems);
+
   return `${INLINE_STYLES}
-<div class="blog-article-container">
+${jsonLd}
+<article class="blog-article-container" itemscope itemtype="https://schema.org/BlogPosting">
+<meta itemprop="datePublished" content="${new Date().toISOString().split('T')[0]}">
+<meta itemprop="dateModified" content="${new Date().toISOString().split('T')[0]}">
+<meta itemprop="description" content="${escapeAttr(topic.metaDescription)}">
+<meta itemprop="keywords" content="${escapeAttr(topic.keywords.join(', '))}">
 ${processedContent}
 ${attribution}
-</div>`;
+</article>`;
+}
+
+function escapeAttr(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escapeJsonString(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+function buildJsonLd(topic: Topic, images: UnsplashImage[], faqItems: FaqItem[]): string {
+  const today = new Date().toISOString().split('T')[0];
+  const heroImage = images.length > 0 ? images[0].url : '';
+
+  const blogPosting = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: topic.title,
+    description: topic.metaDescription,
+    datePublished: today,
+    dateModified: today,
+    author: {
+      '@type': 'Person',
+      name: 'Dominik',
+      url: 'https://www.podrozedominikanskie.pl',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Podróże Dominikańskie',
+      url: 'https://www.podrozedominikanskie.pl',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://www.podrozedominikanskie.pl/favicon.ico',
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://www.podrozedominikanskie.pl/${today.slice(0, 4)}/${today.slice(5, 7)}/${topic.slug}.html`,
+    },
+    image: heroImage,
+    keywords: topic.keywords.join(', '),
+    inLanguage: 'pl-PL',
+    articleSection: topic.category,
+  };
+
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Strona główna',
+        item: 'https://www.podrozedominikanskie.pl',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: topic.category,
+        item: `https://www.podrozedominikanskie.pl/search/label/${encodeURIComponent(topic.category)}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: topic.title,
+      },
+    ],
+  };
+
+  const schemas: Record<string, unknown>[] = [blogPosting, breadcrumb];
+
+  if (faqItems.length > 0) {
+    schemas.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
+    });
+  }
+
+  return schemas
+    .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
+    .join('\n');
 }
 
 function slugify(text: string): string {

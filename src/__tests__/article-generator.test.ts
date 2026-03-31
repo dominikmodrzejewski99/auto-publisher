@@ -44,20 +44,20 @@ describe('generateArticle', () => {
 describe('validateArticle', () => {
   it('should pass for valid article', () => {
     const content = `<h1>Title</h1><p>${'word '.repeat(1600)}</p><h2>A</h2><h2>B</h2><h2>C</h2>`;
-    const result = validateArticle({ content, wordCount: 1600, headings: ['A', 'B', 'C'] });
+    const result = validateArticle({ content, wordCount: 1600, headings: ['A', 'B', 'C'], faqItems: [] });
     expect(result.valid).toBe(true);
   });
 
   it('should fail for article with too few words', () => {
     const content = '<h1>Title</h1><p>Short.</p><h2>A</h2><h2>B</h2><h2>C</h2>';
-    const result = validateArticle({ content, wordCount: 50, headings: ['A', 'B', 'C'] });
+    const result = validateArticle({ content, wordCount: 50, headings: ['A', 'B', 'C'], faqItems: [] });
     expect(result.valid).toBe(false);
     expect(result.reasons).toContain('Article too short: 50 words (minimum 1500)');
   });
 
   it('should fail for article with fewer than 3 H2 headings', () => {
     const content = `<h1>Title</h1><p>${'word '.repeat(1600)}</p><h2>A</h2><h2>B</h2>`;
-    const result = validateArticle({ content, wordCount: 1600, headings: ['A', 'B'] });
+    const result = validateArticle({ content, wordCount: 1600, headings: ['A', 'B'], faqItems: [] });
     expect(result.valid).toBe(false);
   });
 });

@@ -85,6 +85,7 @@ async function main() {
     content: article.content,
     images,
     headings: article.headings,
+    faqItems: article.faqItems,
   });
 
   // 6. Publish as DRAFT
