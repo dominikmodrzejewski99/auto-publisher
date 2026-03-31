@@ -23,6 +23,9 @@ export function loadConfig(): Config {
     fbPageId: requireEnv('FB_PAGE_ID'),
     fbAppId: requireEnv('FB_APP_ID'),
     fbAppSecret: requireEnv('FB_APP_SECRET'),
+    googleServiceAccountKeyPath: requireEnv('GOOGLE_SERVICE_ACCOUNT_KEY_PATH'),
+    pinterestAccessToken: process.env.PINTEREST_ACCESS_TOKEN ?? '',
+    pinterestBoardId: process.env.PINTEREST_BOARD_ID ?? '',
     dryRun: process.argv.includes('--dry-run'),
   };
 }

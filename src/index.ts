@@ -9,6 +9,7 @@ import { generateArticle, validateArticle } from './articles/article-generator.j
 import { assembleHtml } from './articles/template.js';
 import { fetchImages, loadUsedImageIds, saveUsedImageIds } from './images/image-fetcher.js';
 import { publishToBlogger } from './publisher/blogger.js';
+import { requestGoogleIndexing } from './publisher/google-indexing.js';
 import { fetchExistingTitles, isDuplicate } from './publisher/blog-checker.js';
 import {
   checkFbTokenExpiry,
@@ -56,6 +57,7 @@ async function main() {
   if (fbTokenStatus.warning) {
     console.warn(`WARNING: ${fbTokenStatus.message}`);
   }
+
 
   // 4. Fetch existing blog titles (before topic generation for better dedup)
   console.log('\n--- Fetching existing blog titles ---');
@@ -157,6 +159,7 @@ async function main() {
         content: article.content,
         images,
         headings: article.headings,
+        faqItems: article.faqItems,
       });
 
       if (config.dryRun) {
@@ -186,44 +189,55 @@ async function main() {
       });
       console.log(`  Published: ${bloggerResult.url}`);
 
+      // 6e2. Request Google indexing
+      try {
+        await requestGoogleIndexing({
+          serviceAccountKeyPath: config.googleServiceAccountKeyPath,
+          url: bloggerResult.url,
+        });
+        console.log('  Google indexing requested');
+      } catch (err) {
+        console.warn(`  Google indexing failed: ${err instanceof Error ? err.message : err}`);
+      }
+
+      // Build article record
+      const articleRecord: PublishedArticle = {
+        title: topic.title,
+        slug: topic.slug,
+        url: bloggerResult.url,
+        category: topic.category,
+        publishedAt: new Date().toISOString(),
+      };
+
       // 6f. Facebook post
       if (fbTokenStatus.valid) {
-        console.log('  Generating FB post...');
-        const fbText = await generateFbPost({
-          apiKey: config.geminiApiKey,
-          articleTitle: topic.title,
-          articleDescription: topic.metaDescription,
-          articleUrl: bloggerResult.url,
-        });
+        try {
+          console.log('  Generating FB post...');
+          const fbText = await generateFbPost({
+            apiKey: config.geminiApiKey,
+            articleTitle: topic.title,
+            articleDescription: topic.metaDescription,
+            articleUrl: bloggerResult.url,
+          });
 
-        console.log('  Scheduling FB post...');
-        const fbResult = await publishToFacebook({
-          pageId: config.fbPageId,
-          pageAccessToken: config.fbPageAccessToken,
-          message: fbText,
-          link: bloggerResult.url,
-          scheduledTime: fbSlots[i] > Math.floor(Date.now() / 1000) + 600 ? fbSlots[i] : undefined,
-        });
-        console.log(`  FB post scheduled: ${fbResult.postId}`);
-
-        newArticles.push({
-          title: topic.title,
-          slug: topic.slug,
-          url: bloggerResult.url,
-          category: topic.category,
-          publishedAt: new Date().toISOString(),
-          fbPostId: fbResult.postId,
-        });
+          console.log('  Scheduling FB post...');
+          const fbResult = await publishToFacebook({
+            pageId: config.fbPageId,
+            pageAccessToken: config.fbPageAccessToken,
+            message: fbText,
+            link: bloggerResult.url,
+            scheduledTime: fbSlots[i] > Math.floor(Date.now() / 1000) + 600 ? fbSlots[i] : undefined,
+          });
+          console.log(`  FB post scheduled: ${fbResult.postId}`);
+          articleRecord.fbPostId = fbResult.postId;
+        } catch (err) {
+          console.warn(`  FB post failed: ${err instanceof Error ? err.message : err}`);
+        }
       } else {
         console.warn('  Skipping FB post (token invalid)');
-        newArticles.push({
-          title: topic.title,
-          slug: topic.slug,
-          url: bloggerResult.url,
-          category: topic.category,
-          publishedAt: new Date().toISOString(),
-        });
       }
+
+      newArticles.push(articleRecord);
 
       successCount++;
     } catch (error) {

@@ -9,6 +9,9 @@ export interface Config {
   fbPageId: string;
   fbAppId: string;
   fbAppSecret: string;
+  googleServiceAccountKeyPath: string;
+  pinterestAccessToken: string;
+  pinterestBoardId: string;
   dryRun: boolean;
 }
 
@@ -35,10 +38,16 @@ export interface UnsplashImage {
   credit: string;
 }
 
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
 export interface GeneratedArticle {
   content: string;
   wordCount: number;
   headings: string[];
+  faqItems: FaqItem[];
 }
 
 export interface PublishedArticle {
@@ -48,6 +57,7 @@ export interface PublishedArticle {
   category: string;
   publishedAt: string;
   fbPostId?: string;
+  pinterestPinId?: string;
 }
 
 export interface PublishedData {
