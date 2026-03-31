@@ -44,9 +44,11 @@ function buildResearchQueries(title: string, keywords: string[]): string[] {
   const queries: string[] = [];
   const mainKeyword = keywords[0] || title.split(' ').slice(0, 3).join(' ');
 
+  const currentYear = new Date().getFullYear();
+
   // Current year queries
-  queries.push(`${mainKeyword} 2026`);
-  queries.push(`${mainKeyword} ceny 2026`);
+  queries.push(`${mainKeyword} ${currentYear}`);
+  queries.push(`${mainKeyword} ceny ${currentYear}`);
   queries.push(`${mainKeyword} aktualnie`);
 
   // Price/cost queries
@@ -59,7 +61,7 @@ function buildResearchQueries(title: string, keywords: string[]): string[] {
 
   // Add keyword-specific queries
   for (const kw of keywords.slice(0, 3)) {
-    queries.push(`${kw} 2026`);
+    queries.push(`${kw} ${currentYear}`);
   }
 
   return queries;

@@ -41,7 +41,7 @@ export async function discoverTrendingCategories(maxCategories: number = 6): Pro
     const queries = [
       `${dest.keywords[0]} wakacje`,
       `${dest.keywords[0]} loty`,
-      `${dest.keywords[0]} 2026`,
+      `${dest.keywords[0]} ${new Date().getFullYear()}`,
     ];
 
     let totalSuggestions = 0;

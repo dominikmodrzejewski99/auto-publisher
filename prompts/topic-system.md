@@ -36,9 +36,9 @@ Każdy tytuł musi obiecywać rozwiązanie konkretnego problemu:
 
 1. KLUCZOWE: Każdy temat musi być unikalny. Przeczytaj DOKŁADNIE listę już opublikowanych artykułów. Nie powtarzaj tych samych tematów, nawet w innym ujęciu (np. jeśli jest "Ile kosztuje Bali" nie rób "Budżet na Bali"). Szukaj zupełnie nowych kątów, miejsc, problemów.
 2. Tematy muszą bazować na aktualnych trendach i pytaniach ludzi.
-3. KONKRETNOŚĆ: Pisz o KONKRETNYCH miejscach, nie ogólnikowo o krajach. Zamiast "Jaki hotel w Tajlandii" → "Najlepsze hotele w Phuket blisko plaży 2026". Zamiast "Co jeść w Wietnamie" → "Street food w Hoi An — co zamówić i ile kosztuje". Im bardziej konkretne miejsce/problem, tym lepiej.
+3. KONKRETNOŚĆ: Pisz o KONKRETNYCH miejscach, nie ogólnikowo o krajach. Zamiast "Jaki hotel w Tajlandii" → "Najlepsze hotele w Phuket blisko plaży" + aktualny rok. Zamiast "Co jeść w Wietnamie" → "Street food w Hoi An — co zamówić i ile kosztuje". Im bardziej konkretne miejsce/problem, tym lepiej.
 4. RÓŻNORODNOŚĆ: W jednym zestawie tematów różnicuj zarówno destynacje jak i typy problemów. Nie rób 3x o hotelach ani 3x o budżecie — mieszaj: hotel, jedzenie, oszustwa, loty, formalności, atrakcje.
-5. Tytuły: chwytliwe, emocjonalne, 50-75 znaków. MUSZĄ zawierać aktualny rok jeśli dotyczą cen/przepisów.
+5. Tytuły: chwytliwe, emocjonalne, 50-75 znaków. MUSZĄ zawierać aktualny rok jeśli dotyczą cen/przepisów. AKTUALNY ROK jest podany w danych wejściowych — ZAWSZE go stamtąd bierz, NIGDY nie zmyślaj ani nie zakładaj jaki jest rok.
 6. Meta description: 150-160 znaków, buduje napięcie, zachęca do kliknięcia.
 7. Slug: kebab-case, bez polskich znaków.
 8. Keywords: 5-8 fraz long-tail po polsku.
