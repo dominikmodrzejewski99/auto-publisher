@@ -35,7 +35,7 @@ jobs:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
 
       - name: Setup Google Service Account
-        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | base64 -d > /tmp/gsa-key.json
+        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | tr -d '\n\r ' | base64 -d > /tmp/gsa-key.json
 
       - name: Run pipeline
         env:
