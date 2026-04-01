@@ -151,7 +151,11 @@ async function main() {
             const map: Record<string, string> = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
             return map[c] || c;
           })
-          .trim();
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w.length > 2)
+          .slice(0, 4)
+          .join(' ');
         return `${cleanHeading} ${topic.category} travel`;
       });
       const images = await fetchImages({

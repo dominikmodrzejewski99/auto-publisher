@@ -40,66 +40,95 @@ export async function saveUsedImageIds(): Promise<void> {
 }
 
 async function fetchSingleImage(accessKey: string, query: string): Promise<UnsplashImage | null> {
-  try {
-    const page = Math.floor(Math.random() * 5) + 1;
+  // Try page 1 first (most results), then a random page as fallback
+  const pages = [1, Math.floor(Math.random() * 3) + 2];
 
-    const params = new URLSearchParams({
-      query,
-      per_page: '10',
-      page: String(page),
-      orientation: 'landscape',
-      content_filter: 'high',
-      order_by: 'relevant',
-    });
+  for (const page of pages) {
+    try {
+      const params = new URLSearchParams({
+        query,
+        per_page: '30',
+        page: String(page),
+        orientation: 'landscape',
+        content_filter: 'high',
+        order_by: 'relevant',
+      });
 
-    const response = await fetch(
-      `https://api.unsplash.com/search/photos?${params}`,
-      {
-        headers: {
-          Authorization: `Client-ID ${accessKey}`,
+      const response = await fetch(
+        `https://api.unsplash.com/search/photos?${params}`,
+        {
+          headers: {
+            Authorization: `Client-ID ${accessKey}`,
+          },
         },
-      },
-    );
+      );
 
-    if (!response.ok) {
-      console.warn(`Unsplash API error: ${response.status} ${response.statusText}`);
-      return null;
+      if (!response.ok) {
+        console.warn(`Unsplash API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+
+      for (const photo of data.results) {
+        if (usedImageIds.has(photo.id)) continue;
+        usedImageIds.add(photo.id);
+        return {
+          url: `${photo.urls.raw}&w=1200&q=80&fit=crop`,
+          alt: photo.alt_description || query,
+          credit: photo.user.name,
+        };
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch image for "${query}" (page ${page}):`, error);
     }
-
-    const data = await response.json();
-
-    for (const photo of data.results) {
-      if (usedImageIds.has(photo.id)) continue;
-      usedImageIds.add(photo.id);
-      return {
-        url: `${photo.urls.raw}&w=1200&q=80&fit=crop`,
-        alt: photo.alt_description || query,
-        credit: photo.user.name,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.warn(`Failed to fetch image for "${query}":`, error);
-    return null;
   }
+
+  return null;
 }
 
 /**
  * Fetch one image per query (one per section).
  * Each query is tailored to the specific H2 section content.
  */
+/**
+ * Simplify a query by taking only the first few meaningful words.
+ * Helps when the original query is too specific for Unsplash.
+ */
+function simplifyQuery(query: string): string {
+  const words = query.split(/\s+/).filter((w) => w.length > 2);
+  return words.slice(0, 3).join(' ');
+}
+
 export async function fetchImages(options: FetchImagesOptions): Promise<UnsplashImage[]> {
   const { accessKey, queries } = options;
   const images: UnsplashImage[] = [];
 
-  for (const query of queries) {
-    const image = await fetchSingleImage(accessKey, query);
+  for (let i = 0; i < queries.length; i++) {
+    const query = queries[i];
+    let image = await fetchSingleImage(accessKey, query);
+
+    // Retry with simplified query if no result
+    if (!image) {
+      const simplified = simplifyQuery(query);
+      if (simplified !== query) {
+        console.warn(`  Retrying with simplified query: "${simplified}"`);
+        image = await fetchSingleImage(accessKey, simplified);
+      }
+    }
+
+    // For hero image (index 0): last resort generic fallback
+    if (!image && i === 0) {
+      console.warn('  Hero image fallback: generic travel query');
+      image = await fetchSingleImage(accessKey, 'travel landscape beautiful destination');
+    }
+
     if (image) {
       images.push(image);
     }
+
     // Small delay to respect rate limits
-    if (queries.indexOf(query) < queries.length - 1) {
+    if (i < queries.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
