@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SCOPES = ['https://www.googleapis.com/auth/blogger'];
-const PORT = 3000;
+const PORT = parseInt(process.argv.find((_, i, a) => a[i - 1] === '--port') ?? '3000', 10);
 const REDIRECT_URI = `http://localhost:${PORT}`;
 
 async function main() {
