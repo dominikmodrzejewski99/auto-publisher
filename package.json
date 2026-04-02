@@ -13,7 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "auth:google": "tsx src/scripts/google-auth.ts",
-    "auth:fb-refresh": "tsx src/scripts/fb-token-refresh.ts"
+    "auth:fb-refresh": "tsx src/scripts/fb-token-refresh.ts",
+    "from-fb": "tsx src/fb-post-pipeline.ts",
+    "from-fb:draft": "tsx src/fb-post-pipeline.ts --draft",
+    "from-fb:dry": "tsx src/fb-post-pipeline.ts --dry-run",
+    "help": "echo '\n=== Blog Auto-Publisher — Skrypty ===\n\n  npm start            Pełny pipeline: trendy → artykuły → Blogger → FB (LIVE)\n  npm run start:dry    Jak start, ale nic nie publikuje (podgląd)\n\n  npm run from-fb      Artykuł z posta FB → Blogger + FB (LIVE)\n                       Użycie: npm run from-fb -- --post \"tekst posta z FB\"\n  npm run from-fb:draft  Jak from-fb, ale tworzy wersję roboczą na Bloggerze\n                       Użycie: npm run from-fb:draft -- --post \"tekst posta z FB\"\n  npm run from-fb:dry  Jak from-fb, ale nic nie publikuje (podgląd)\n                       Użycie: npm run from-fb:dry -- --post \"tekst posta z FB\"\n\n  npm run auth:google    Konfiguracja OAuth2 Google (Blogger)\n  npm run auth:fb-refresh  Odświeżenie tokenu Facebook\n\n  npm test             Uruchom testy\n  npm run build        Kompilacja TypeScript\n'"
   },
   "keywords": [],
   "author": "",

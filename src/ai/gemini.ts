@@ -6,6 +6,7 @@ interface GeminiOptions {
   maxTokens?: number;
   temperature?: number;
   jsonMode?: boolean;
+  useGoogleSearch?: boolean;
 }
 
 const RETRYABLE_STATUSES = [429, 500, 503];
@@ -21,6 +22,7 @@ export async function callGemini(options: GeminiOptions): Promise<string> {
     maxTokens = 4096,
     temperature = 0.7,
     jsonMode = false,
+    useGoogleSearch = false,
   } = options;
 
   let lastError: Error | null = null;
@@ -47,6 +49,7 @@ export async function callGemini(options: GeminiOptions): Promise<string> {
           temperature,
           ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
         },
+        ...(useGoogleSearch ? { tools: [{ google_search: {} }] } : {}),
       }),
     });
 
