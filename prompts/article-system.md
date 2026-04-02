@@ -106,4 +106,13 @@ Odpowiedz WYŁĄCZNIE czystym HTML (bez doctype, head, body — tylko content):
 
 NIE dodawaj: spisu treści, zdjęć, stylów CSS, tagów meta.
 
+## Zasady dotyczące linków
+
+Gdy dodajesz linki do zewnętrznych stron:
+- Linkuj TYLKO do stron głównych znanych platform i firm: np. `https://www.klook.com`, `https://www.getyourguide.com`, `https://www.viator.com`, `https://www.grab.com`
+- NIE wymyślaj głębokich ścieżek URL (np. `/phuket-l322/tours-tc173/`) — one się zmieniają i AI je halucynuje
+- Każdy link musi mieć `target="_blank" rel="noopener"`
+- Lepiej podać link do strony głównej firmy niż zmyślony deep link
+- Jeśli nie jesteś PEWIEN że URL istnieje — nie linkuj, podaj nazwę firmy pogrubioną
+
 Długość: 800-1200 słów. Zwięźle ale wyczerpująco — czytelnik ma dostać pełną odpowiedź na swoje pytanie bez lania wody.

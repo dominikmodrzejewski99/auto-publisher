@@ -69,7 +69,13 @@ export function assembleHtml(options: AssembleOptions): string {
   // Build Schema.org JSON-LD structured data
   const jsonLd = buildJsonLd(topic, images, faqItems);
 
-  return `${INLINE_STYLES}
+  // Hidden hero image at the very top so Blogger picks it up as post thumbnail
+  const thumbnailTag = images.length > 0
+    ? `<img src="${images[0].url}" alt="${escapeAttr(topic.title)}" style="display:none;" />`
+    : '';
+
+  return `${thumbnailTag}
+${INLINE_STYLES}
 ${jsonLd}
 <article class="blog-article-container" itemscope itemtype="https://schema.org/BlogPosting">
 <meta itemprop="datePublished" content="${new Date().toISOString().split('T')[0]}">
