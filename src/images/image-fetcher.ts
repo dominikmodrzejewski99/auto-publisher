@@ -40,48 +40,43 @@ export async function saveUsedImageIds(): Promise<void> {
 }
 
 async function fetchSingleImage(accessKey: string, query: string): Promise<UnsplashImage | null> {
-  // Try page 1 first (most results), then a random page as fallback
-  const pages = [1, Math.floor(Math.random() * 3) + 2];
+  try {
+    const params = new URLSearchParams({
+      query,
+      per_page: '15',
+      page: '1',
+      orientation: 'landscape',
+      content_filter: 'high',
+      order_by: 'relevant',
+    });
 
-  for (const page of pages) {
-    try {
-      const params = new URLSearchParams({
-        query,
-        per_page: '30',
-        page: String(page),
-        orientation: 'landscape',
-        content_filter: 'high',
-        order_by: 'relevant',
-      });
-
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?${params}`,
-        {
-          headers: {
-            Authorization: `Client-ID ${accessKey}`,
-          },
+    const response = await fetch(
+      `https://api.unsplash.com/search/photos?${params}`,
+      {
+        headers: {
+          Authorization: `Client-ID ${accessKey}`,
         },
-      );
+      },
+    );
 
-      if (!response.ok) {
-        console.warn(`Unsplash API error: ${response.status} ${response.statusText}`);
-        return null;
-      }
-
-      const data = await response.json();
-
-      for (const photo of data.results) {
-        if (usedImageIds.has(photo.id)) continue;
-        usedImageIds.add(photo.id);
-        return {
-          url: `${photo.urls.raw}&w=1200&q=80&fit=crop`,
-          alt: photo.alt_description || query,
-          credit: photo.user.name,
-        };
-      }
-    } catch (error) {
-      console.warn(`Failed to fetch image for "${query}" (page ${page}):`, error);
+    if (!response.ok) {
+      console.warn(`Unsplash API error: ${response.status} ${response.statusText}`);
+      return null;
     }
+
+    const data = await response.json();
+
+    for (const photo of data.results) {
+      if (usedImageIds.has(photo.id)) continue;
+      usedImageIds.add(photo.id);
+      return {
+        url: `${photo.urls.raw}&w=1200&q=80&fit=crop`,
+        alt: photo.alt_description || query,
+        credit: photo.user.name,
+      };
+    }
+  } catch (error) {
+    console.warn(`Failed to fetch image for "${query}":`, error);
   }
 
   return null;
@@ -117,14 +112,10 @@ export async function fetchImages(options: FetchImagesOptions): Promise<Unsplash
       }
     }
 
-    // For hero image (index 0): last resort generic fallback
-    if (!image && i === 0) {
-      console.warn('  Hero image fallback: generic travel query');
-      image = await fetchSingleImage(accessKey, 'travel landscape beautiful destination');
-    }
-
     if (image) {
       images.push(image);
+    } else {
+      console.warn(`  No relevant image found for query "${query}" — skipping`);
     }
 
     // Small delay to respect rate limits
