@@ -68,9 +68,22 @@ async function fetchSingleImage(accessKey: string, query: string): Promise<Unspl
 
     for (const photo of data.results) {
       if (usedImageIds.has(photo.id)) continue;
+
+      // Skip images that are too small (likely placeholders or broken)
+      if (photo.width < 800 || photo.height < 400) continue;
+
+      const imageUrl = `${photo.urls.raw}&w=1200&q=80&fit=crop`;
+
+      // Validate image is actually accessible
+      const isValid = await validateImageUrl(imageUrl);
+      if (!isValid) {
+        console.warn(`  Skipping inaccessible image: ${photo.id}`);
+        continue;
+      }
+
       usedImageIds.add(photo.id);
       return {
-        url: `${photo.urls.raw}&w=1200&q=80&fit=crop`,
+        url: imageUrl,
         alt: photo.alt_description || query,
         credit: photo.user.name,
       };
@@ -82,10 +95,23 @@ async function fetchSingleImage(accessKey: string, query: string): Promise<Unspl
   return null;
 }
 
-/**
- * Fetch one image per query (one per section).
- * Each query is tailored to the specific H2 section content.
- */
+/** Validate that an image URL is actually accessible via HEAD request */
+async function validateImageUrl(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const contentType = response.headers.get('content-type') ?? '';
+    return response.ok && contentType.startsWith('image/');
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Simplify a query by taking only the first few meaningful words.
  * Helps when the original query is too specific for Unsplash.

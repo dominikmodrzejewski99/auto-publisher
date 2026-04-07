@@ -4,8 +4,9 @@ const HEADERS = {
   'Accept-Language': 'pl-PL,pl;q=0.9',
 };
 
-/** Known Asian travel destinations to scan for trending interest */
+/** Known travel destinations to scan for trending interest */
 const DESTINATION_POOL = [
+  // Azja
   { name: 'Tajlandia', keywords: ['tajlandia', 'bangkok', 'phuket', 'krabi', 'chiang mai', 'koh samui', 'phi phi'] },
   { name: 'Bali', keywords: ['bali', 'ubud', 'seminyak', 'nusa penida', 'kuta', 'uluwatu', 'canggu'] },
   { name: 'Wietnam', keywords: ['wietnam', 'hanoi', 'ho chi minh', 'ha long bay', 'da nang', 'hoi an', 'sapa'] },
@@ -22,6 +23,19 @@ const DESTINATION_POOL = [
   { name: 'Indonezja', keywords: ['indonezja', 'jawa', 'lombok', 'komodo', 'flores', 'raja ampat'] },
   { name: 'Birma', keywords: ['birma', 'myanmar', 'rangun', 'bagan', 'mandalay', 'jezioro inle'] },
   { name: 'Laos', keywords: ['laos', 'luang prabang', 'vientiane', 'vang vieng'] },
+  // Europa — trendujące destynacje
+  { name: 'Grecja', keywords: ['grecja', 'ateny', 'santorini', 'kreta', 'rodos', 'korfu', 'zakynthos', 'mykonos'] },
+  { name: 'Włochy', keywords: ['włochy', 'rzym', 'mediolan', 'wenecja', 'florencja', 'neapol', 'sycylia', 'sardynia'] },
+  { name: 'Hiszpania', keywords: ['hiszpania', 'barcelona', 'madryt', 'majorka', 'teneryfa', 'malaga', 'ibiza'] },
+  { name: 'Portugalia', keywords: ['portugalia', 'lizbona', 'porto', 'algarve', 'madera', 'azory'] },
+  { name: 'Chorwacja', keywords: ['chorwacja', 'dubrownik', 'split', 'hvar', 'zadar', 'plitwice'] },
+  { name: 'Turcja', keywords: ['turcja', 'stambuł', 'antalya', 'kapadocja', 'bodrum', 'fethiye', 'pamukkale'] },
+  { name: 'Czarnogóra', keywords: ['czarnogóra', 'kotor', 'budva', 'tivat', 'durmitor'] },
+  { name: 'Albania', keywords: ['albania', 'tirana', 'saranda', 'ksamil', 'berat', 'vlora', 'durres'] },
+  { name: 'Malta', keywords: ['malta', 'valletta', 'gozo', 'comino', 'blue lagoon malta'] },
+  { name: 'Islandia', keywords: ['islandia', 'reykjavik', 'blue lagoon', 'golden circle', 'zorza polarna islandia'] },
+  { name: 'Cypr', keywords: ['cypr', 'pafos', 'larnaka', 'limassol', 'ayia napa', 'nikozja'] },
+  { name: 'Gruzja', keywords: ['gruzja', 'tbilisi', 'batumi', 'kazbegi', 'kutaisi', 'swanetia'] },
 ];
 
 export interface DiscoveredCategory {

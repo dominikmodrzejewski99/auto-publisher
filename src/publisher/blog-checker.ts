@@ -65,8 +65,8 @@ export function isDuplicate(title: string, existingTitles: Set<string>): boolean
   for (const existing of existingTitles) {
     const existingWords = getSignificantWords(existing);
     const overlap = titleWords.filter((w) => existingWords.includes(w));
-    // If 4+ significant words match, it's likely a duplicate topic
-    if (overlap.length >= 4) return true;
+    // If 3+ significant words match, it's likely a duplicate topic
+    if (overlap.length >= 3) return true;
   }
 
   return false;
@@ -84,6 +84,12 @@ const STOP_WORDS = new Set([
   'i', 'w', 'na', 'do', 'z', 'o', 'jak', 'co', 'czy', 'ile', 'to',
   'a', 'dla', 'po', 'za', 'od', 'nie', 'się', 'je', 'ten', 'ta',
   'oraz', 'czyli', 'the', 'and', 'or', 'of', 'in', 'to', 'is',
+  'przy', 'przed', 'nad', 'pod', 'bez', 'już', 'też', 'tylko',
+  'tak', 'ale', 'gdy', 'kiedy', 'gdzie', 'który', 'która', 'które',
+  'tego', 'tej', 'tym', 'tych', 'tego', 'jest', 'być', 'może',
+  'najlepsze', 'najlepszy', 'najlepsza', 'najlepiej',
+  'kompletny', 'kompletna', 'przewodnik', 'poradnik', 'guide',
+  'roku', 'rok', '2025', '2026', '2027',
 ]);
 
 function getSignificantWords(text: string): string[] {
