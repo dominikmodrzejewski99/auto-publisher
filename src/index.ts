@@ -10,14 +10,14 @@ import { assembleHtml } from './articles/template.js';
 import { fetchImages, loadUsedImageIds, saveUsedImageIds } from './images/image-fetcher.js';
 import { publishToBlogger } from './publisher/blogger.js';
 import { requestGoogleIndexing } from './publisher/google-indexing.js';
-import { fetchExistingTitles, isDuplicate } from './publisher/blog-checker.js';
+import { fetchExistingTitles, isDuplicate, normalizeTitle } from './publisher/blog-checker.js';
 import {
   checkFbTokenExpiry,
   generateFbPost,
   publishToFacebook,
   getFbScheduleSlots,
 } from './social/facebook.js';
-import type { PublishedData, PublishedArticle } from './types.js';
+import type { PublishedData, PublishedArticle, Topic } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../data');
@@ -76,38 +76,68 @@ async function main() {
   console.log(`Related queries: ${Object.keys(trends.relatedQueries).length} categories`);
   console.log(`People questions: ${Object.values(trends.peopleQuestions).reduce((s, q) => s + q.length, 0)}`);
 
-  // 6. Generate topics (with full blog titles for AI dedup)
-  console.log('\n--- Generating topics ---');
-  const topics = await generateTopics({
-    apiKey: config.geminiApiKey,
-    trends,
-    categories: categories,
-    publishedSlugs,
-    existingBlogTitles: existingTitlesResult.rawTitles,
-    count: 8,
-  });
-  console.log(`Generated ${topics.length} topics:`);
-  topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
+  // 6. Generate topics — keep generating until we have TARGET_ARTICLES unique topics
+  const TARGET_ARTICLES = 10;
+  const MAX_GENERATION_ROUNDS = 4;
+  const uniqueTopics: Topic[] = [];
+  const seenSlugs = new Set(publishedSlugs);
 
-  if (topics.length === 0) {
-    console.log('No topics generated. Exiting.');
-    return;
-  }
+  for (let round = 1; round <= MAX_GENERATION_ROUNDS && uniqueTopics.length < TARGET_ARTICLES; round++) {
+    const needed = TARGET_ARTICLES - uniqueTopics.length;
+    // Ask for more than needed to account for potential duplicates
+    const requestCount = Math.min(needed + 4, 12);
 
-  // 6b. Double-check for duplicates against blog (programmatic safety net)
-  const uniqueTopics = topics.filter((t) => {
-    if (isDuplicate(t.title, existingTitlesResult.normalizedSet)) {
-      console.log(`  Skipping duplicate: ${t.title}`);
-      return false;
+    console.log(`\n--- Generating topics (round ${round}, need ${needed} more) ---`);
+    const topics = await generateTopics({
+      apiKey: config.geminiApiKey,
+      trends,
+      categories: categories,
+      publishedSlugs: [...seenSlugs],
+      existingBlogTitles: [
+        ...existingTitlesResult.rawTitles,
+        ...uniqueTopics.map((t) => t.title),
+      ],
+      count: requestCount,
+    });
+    console.log(`Generated ${topics.length} topics:`);
+    topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
+
+    // Double-check for duplicates against blog (programmatic safety net)
+    for (const t of topics) {
+      if (uniqueTopics.length >= TARGET_ARTICLES) break;
+      if (seenSlugs.has(t.slug)) {
+        console.log(`  Skipping duplicate slug: ${t.title}`);
+        continue;
+      }
+      if (isDuplicate(t.title, existingTitlesResult.normalizedSet)) {
+        console.log(`  Skipping duplicate: ${t.title}`);
+        continue;
+      }
+      // Also check against already accepted topics from previous rounds
+      const alreadyAccepted = new Set(uniqueTopics.map((u) => normalizeTitle(u.title)));
+      if (isDuplicate(t.title, alreadyAccepted)) {
+        console.log(`  Skipping duplicate (intra-batch): ${t.title}`);
+        continue;
+      }
+      uniqueTopics.push(t);
+      seenSlugs.add(t.slug);
     }
-    return true;
-  });
-  console.log(`Topics after dedup: ${uniqueTopics.length}`);
+
+    console.log(`Unique topics so far: ${uniqueTopics.length}/${TARGET_ARTICLES}`);
+
+    if (uniqueTopics.length >= TARGET_ARTICLES) break;
+
+    // Small delay before next generation round
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
 
   if (uniqueTopics.length === 0) {
-    console.log('All topics are duplicates. Exiting.');
+    console.log('No unique topics generated after all rounds. Exiting.');
     return;
   }
+
+  console.log(`\nFinal topics (${uniqueTopics.length}):`);
+  uniqueTopics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
 
   // 6. Process each topic
   const fbSlots = getFbScheduleSlots(new Date());

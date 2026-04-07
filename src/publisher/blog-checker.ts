@@ -72,7 +72,7 @@ export function isDuplicate(title: string, existingTitles: Set<string>): boolean
   return false;
 }
 
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .replace(/[?!.,;:()]/g, '')
