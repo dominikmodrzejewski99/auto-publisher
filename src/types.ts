@@ -68,3 +68,20 @@ export interface FbScheduleSlot {
   hour: number;
   minute: number;
 }
+
+export interface SourceFeed {
+  name: string;
+  url: string;
+  language: string;
+  category?: string;
+}
+
+export interface SourceArticle {
+  feedName: string;
+  title: string;
+  link: string;
+  summary: string;
+  content: string;
+  publishedAt: string;
+  language: string;
+}

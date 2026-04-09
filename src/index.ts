@@ -17,7 +17,8 @@ import {
   publishToFacebook,
   getFbScheduleSlots,
 } from './social/facebook.js';
-import type { PublishedData, PublishedArticle, Topic } from './types.js';
+import { fetchSourceTopics, generateArticleFromSource } from './sources/source-pipeline.js';
+import type { PublishedData, PublishedArticle, Topic, SourceArticle } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../data');
@@ -76,89 +77,113 @@ async function main() {
   console.log(`Related queries: ${Object.keys(trends.relatedQueries).length} categories`);
   console.log(`People questions: ${Object.values(trends.peopleQuestions).reduce((s, q) => s + q.length, 0)}`);
 
-  // 6. Generate topics — keep generating until we have TARGET_ARTICLES unique topics
-  const TARGET_ARTICLES = 10;
-  const MAX_GENERATION_ROUNDS = 4;
-  const uniqueTopics: Topic[] = [];
+  // 6. Generate topics — TWO PIPELINES IN PARALLEL
+  //    Pipeline A: 5 trend-based articles (diverse)
+  //    Pipeline B: 5 source-based articles (from foreign blogs)
+  const TREND_ARTICLE_COUNT = 5;
+  const MAX_GENERATION_ROUNDS = 3;
   const seenSlugs = new Set(publishedSlugs);
 
-  for (let round = 1; round <= MAX_GENERATION_ROUNDS && uniqueTopics.length < TARGET_ARTICLES; round++) {
-    const needed = TARGET_ARTICLES - uniqueTopics.length;
-    // Ask for more than needed to account for potential duplicates
-    const requestCount = Math.min(needed + 4, 12);
+  // Run both pipelines concurrently
+  const [trendTopics, sourceResults] = await Promise.all([
+    // Pipeline A: Trend-based topics
+    (async () => {
+      const uniqueTopics: Topic[] = [];
+      for (let round = 1; round <= MAX_GENERATION_ROUNDS && uniqueTopics.length < TREND_ARTICLE_COUNT; round++) {
+        const needed = TREND_ARTICLE_COUNT - uniqueTopics.length;
+        const requestCount = Math.min(needed + 4, 10);
 
-    console.log(`\n--- Generating topics (round ${round}, need ${needed} more) ---`);
-    const topics = await generateTopics({
-      apiKey: config.geminiApiKey,
-      trends,
-      categories: categories,
-      publishedSlugs: [...seenSlugs],
-      existingBlogTitles: [
-        ...existingTitlesResult.rawTitles,
-        ...uniqueTopics.map((t) => t.title),
-      ],
-      count: requestCount,
-    });
-    console.log(`Generated ${topics.length} topics:`);
-    topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
+        console.log(`\n--- [TRENDS] Generating topics (round ${round}, need ${needed} more) ---`);
+        const topics = await generateTopics({
+          apiKey: config.geminiApiKey,
+          trends,
+          categories: categories,
+          publishedSlugs: [...seenSlugs],
+          existingBlogTitles: [
+            ...existingTitlesResult.rawTitles,
+            ...uniqueTopics.map((t) => t.title),
+          ],
+          count: requestCount,
+        });
+        console.log(`[TRENDS] Generated ${topics.length} topics:`);
+        topics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
 
-    // Double-check for duplicates against blog (programmatic safety net)
-    for (const t of topics) {
-      if (uniqueTopics.length >= TARGET_ARTICLES) break;
-      if (seenSlugs.has(t.slug)) {
-        console.log(`  Skipping duplicate slug: ${t.title}`);
-        continue;
+        for (const t of topics) {
+          if (uniqueTopics.length >= TREND_ARTICLE_COUNT) break;
+          if (seenSlugs.has(t.slug)) continue;
+          if (isDuplicate(t.title, existingTitlesResult.normalizedSet)) continue;
+          const alreadyAccepted = new Set(uniqueTopics.map((u) => normalizeTitle(u.title)));
+          if (isDuplicate(t.title, alreadyAccepted)) continue;
+          uniqueTopics.push(t);
+          seenSlugs.add(t.slug);
+        }
+
+        console.log(`[TRENDS] Unique topics so far: ${uniqueTopics.length}/${TREND_ARTICLE_COUNT}`);
+        if (uniqueTopics.length >= TREND_ARTICLE_COUNT) break;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-      if (isDuplicate(t.title, existingTitlesResult.normalizedSet)) {
-        console.log(`  Skipping duplicate: ${t.title}`);
-        continue;
+      return uniqueTopics;
+    })(),
+
+    // Pipeline B: Source-based topics (foreign blogs)
+    (async () => {
+      try {
+        return await fetchSourceTopics({
+          apiKey: config.geminiApiKey,
+          publishedSlugs: [...seenSlugs],
+          existingBlogTitles: existingTitlesResult.rawTitles,
+        });
+      } catch (err) {
+        console.error(`[SOURCES] Pipeline failed: ${err}`);
+        return [];
       }
-      // Also check against already accepted topics from previous rounds
-      const alreadyAccepted = new Set(uniqueTopics.map((u) => normalizeTitle(u.title)));
-      if (isDuplicate(t.title, alreadyAccepted)) {
-        console.log(`  Skipping duplicate (intra-batch): ${t.title}`);
-        continue;
-      }
-      uniqueTopics.push(t);
-      seenSlugs.add(t.slug);
-    }
+    })(),
+  ]);
 
-    console.log(`Unique topics so far: ${uniqueTopics.length}/${TARGET_ARTICLES}`);
-
-    if (uniqueTopics.length >= TARGET_ARTICLES) break;
-
-    // Small delay before next generation round
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+  // Merge results — add source slugs to seenSlugs to prevent cross-pipeline duplicates
+  for (const sr of sourceResults) {
+    seenSlugs.add(sr.topic.slug);
   }
 
-  if (uniqueTopics.length === 0) {
-    console.log('No unique topics generated after all rounds. Exiting.');
+  // Build unified work list: { topic, sourceArticle? }
+  interface WorkItem {
+    topic: Topic;
+    sourceArticle?: SourceArticle;
+    pipelineLabel: string;
+  }
+
+  const workItems: WorkItem[] = [
+    ...trendTopics.map((t) => ({ topic: t, pipelineLabel: 'TREND' })),
+    ...sourceResults.map((sr) => ({ topic: sr.topic, sourceArticle: sr.sourceArticle, pipelineLabel: 'SOURCE' })),
+  ];
+
+  if (workItems.length === 0) {
+    console.log('No topics generated from either pipeline. Exiting.');
     return;
   }
 
-  console.log(`\nFinal topics (${uniqueTopics.length}):`);
-  uniqueTopics.forEach((t, i) => console.log(`  ${i + 1}. ${t.title}`));
+  console.log(`\n=== Final topics (${workItems.length}) ===`);
+  workItems.forEach((w, i) => console.log(`  ${i + 1}. [${w.pipelineLabel}] ${w.topic.title}`));
 
-  // 6. Process each topic
+  // 7. Process each topic
   const fbSlots = getFbScheduleSlots(new Date());
   const newArticles: PublishedArticle[] = [];
   let successCount = 0;
   let failCount = 0;
 
-  for (let i = 0; i < uniqueTopics.length; i++) {
-    const topic = uniqueTopics[i];
-    console.log(`\n--- Article ${i + 1}/${uniqueTopics.length}: ${topic.title} ---`);
+  for (let i = 0; i < workItems.length; i++) {
+    const { topic, sourceArticle, pipelineLabel } = workItems[i];
+    console.log(`\n--- Article ${i + 1}/${workItems.length} [${pipelineLabel}]: ${topic.title} ---`);
 
     try {
-      // 6a. Generate article
+      // 7a. Generate article — different path for source vs trend
       console.log('  Generating article...');
-      const article = await generateArticle({
-        apiKey: config.geminiApiKey,
-        topic,
-      });
+      const article = sourceArticle
+        ? await generateArticleFromSource({ apiKey: config.geminiApiKey, topic, sourceArticle })
+        : await generateArticle({ apiKey: config.geminiApiKey, topic });
       console.log(`  Words: ${article.wordCount}, H2s: ${article.headings.length}`);
 
-      // 6b. Validate
+      // 7b. Validate
       const validation = validateArticle(article);
       if (!validation.valid) {
         console.warn(`  Validation failed: ${validation.reasons.join(', ')}`);
@@ -166,7 +191,7 @@ async function main() {
         continue;
       }
 
-      // 6c. Fetch images — one per section, query tailored to H2 content
+      // 7c. Fetch images
       console.log('  Fetching images...');
       const heroQuery = `${topic.category} travel landscape`;
       const contentHeadings = article.headings.filter((h) => {
@@ -194,7 +219,7 @@ async function main() {
       });
       console.log(`  Found ${images.length} images`);
 
-      // 6d. Assemble HTML
+      // 7d. Assemble HTML
       const html = assembleHtml({
         topic,
         content: article.content,
@@ -217,7 +242,7 @@ async function main() {
         continue;
       }
 
-      // 6e. Publish to Blogger
+      // 7e. Publish to Blogger
       console.log('  Publishing to Blogger...');
       const bloggerResult = await publishToBlogger({
         clientId: config.googleClientId,
@@ -230,7 +255,7 @@ async function main() {
       });
       console.log(`  Published: ${bloggerResult.url}`);
 
-      // 6e2. Request Google indexing
+      // 7e2. Request Google indexing
       try {
         await requestGoogleIndexing({
           serviceAccountKeyPath: config.googleServiceAccountKeyPath,
@@ -250,7 +275,7 @@ async function main() {
         publishedAt: new Date().toISOString(),
       };
 
-      // 6f. Facebook post
+      // 7f. Facebook post
       if (fbTokenStatus.valid) {
         try {
           console.log('  Generating FB post...');
@@ -287,16 +312,16 @@ async function main() {
     }
 
     // Delay between articles to respect Gemini rate limits (15 req/min)
-    if (i < uniqueTopics.length - 1) {
+    if (i < workItems.length - 1) {
       console.log('  Waiting 8s before next article...');
       await new Promise((resolve) => setTimeout(resolve, 8000));
     }
   }
 
-  // 7. Save used image IDs for next run
+  // 8. Save used image IDs for next run
   await saveUsedImageIds();
 
-  // 8. Update published.json
+  // 9. Update published.json
   publishedData.articles.push(...newArticles);
   await writeFile(
     join(DATA_DIR, 'published.json'),
@@ -304,7 +329,7 @@ async function main() {
     'utf-8',
   );
 
-  // 9. Report
+  // 10. Report
   console.log('\n=== Report ===');
   console.log(`Success: ${successCount}`);
   console.log(`Failed: ${failCount}`);

@@ -44,9 +44,20 @@ export interface DiscoveredCategory {
   trendScore: number;
 }
 
+/** Travel-related keywords that indicate real travel interest in suggestions */
+const TRAVEL_SIGNALS = [
+  'wakacje', 'wczasy', 'urlop', 'lot', 'loty', 'bilet', 'hotel', 'hostel', 'noclegi',
+  'all inclusive', 'last minute', 'cena', 'koszt', 'budżet', 'ile kosztuje',
+  'wiza', 'paszport', 'ubezpieczenie', 'szczepienia', 'bezpiecznie', 'pogoda',
+  'kiedy jechać', 'kiedy lecieć', 'co zobaczyć', 'co zwiedzić', 'atrakcje',
+  'plaża', 'jedzenie', 'restauracje', 'transport', 'dojazd', 'wycieczka',
+  'przewodnik', 'mapa', 'itinerarium', 'trasa', 'plan',
+];
+
 /**
- * Discover which Asian destinations are trending right now
- * by checking Google Suggest volume for each destination.
+ * Discover which destinations are trending right now.
+ * Scores by relevance of Google Suggest results (travel-related keywords),
+ * not just count. Also rotates daily to ensure variety.
  */
 export async function discoverTrendingCategories(maxCategories: number = 6): Promise<DiscoveredCategory[]> {
   const scored: DiscoveredCategory[] = [];
@@ -56,44 +67,90 @@ export async function discoverTrendingCategories(maxCategories: number = 6): Pro
       `${dest.keywords[0]} wakacje`,
       `${dest.keywords[0]} loty`,
       `${dest.keywords[0]} ${new Date().getFullYear()}`,
+      `${dest.keywords[0]} co zobaczyć`,
     ];
 
-    let totalSuggestions = 0;
+    let relevanceScore = 0;
     for (const q of queries) {
-      const suggestions = await fetchSuggestCount(q);
-      totalSuggestions += suggestions;
+      const suggestions = await fetchSuggestions(q);
+      for (const s of suggestions) {
+        const lower = s.toLowerCase();
+        // Each travel-related suggestion adds points
+        for (const signal of TRAVEL_SIGNALS) {
+          if (lower.includes(signal)) {
+            relevanceScore += 2;
+            break; // count each suggestion once
+          }
+        }
+        // Bonus for suggestions containing the destination name + year
+        if (lower.includes(String(new Date().getFullYear()))) {
+          relevanceScore += 1;
+        }
+      }
     }
 
     scored.push({
       name: dest.name,
       keywords: dest.keywords,
-      trendScore: totalSuggestions,
+      trendScore: relevanceScore,
     });
 
-    // Small delay to not hammer the API
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  // Sort by trend score (most popular first) and take top N
+  // Sort by relevance score
   scored.sort((a, b) => b.trendScore - a.trendScore);
 
-  const selected = scored.slice(0, maxCategories);
+  // Daily rotation: shift the pool based on day-of-year so different
+  // destinations with similar scores get a chance on different days
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const rotationOffset = dayOfYear % Math.max(1, Math.floor(scored.length / maxCategories));
+
+  // Take top candidates (2x what we need), then rotate within them
+  const candidatePool = scored.slice(0, maxCategories * 3);
+  const rotated = [
+    ...candidatePool.slice(rotationOffset),
+    ...candidatePool.slice(0, rotationOffset),
+  ];
+
+  // Pick top N from rotated pool, ensuring mix of Asia + Europe
+  const selected: DiscoveredCategory[] = [];
+  const asiaNames = new Set(DESTINATION_POOL.slice(0, 16).map((d) => d.name));
+  let asiaCount = 0;
+  let europeCount = 0;
+  const maxPerRegion = Math.ceil(maxCategories * 0.65); // max ~65% from one region
+
+  for (const cat of rotated) {
+    if (selected.length >= maxCategories) break;
+    const isAsia = asiaNames.has(cat.name);
+    if (isAsia && asiaCount >= maxPerRegion) continue;
+    if (!isAsia && europeCount >= maxPerRegion) continue;
+    selected.push(cat);
+    if (isAsia) asiaCount++; else europeCount++;
+  }
+
+  // Fill remaining if region caps left gaps
+  for (const cat of rotated) {
+    if (selected.length >= maxCategories) break;
+    if (!selected.includes(cat)) selected.push(cat);
+  }
+
   console.log('Trending destinations:');
   selected.forEach((d) => console.log(`  ${d.name}: score ${d.trendScore}`));
 
   return selected;
 }
 
-async function fetchSuggestCount(query: string): Promise<number> {
+async function fetchSuggestions(query: string): Promise<string[]> {
   try {
     const url = `https://suggestqueries.google.com/complete/search?client=firefox&hl=pl&gl=pl&q=${encodeURIComponent(query)}`;
     const response = await fetch(url, { headers: HEADERS });
-    if (!response.ok) return 0;
+    if (!response.ok) return [];
     const buffer = await response.arrayBuffer();
     const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
     const data = JSON.parse(text);
-    return (data[1] ?? []).length;
+    return data[1] ?? [];
   } catch {
-    return 0;
+    return [];
   }
 }
