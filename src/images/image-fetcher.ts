@@ -39,7 +39,16 @@ export async function saveUsedImageIds(): Promise<void> {
   console.log(`Saved ${idsToSave.length} used image IDs`);
 }
 
+/**
+ * Rate-limit circuit breaker: once Unsplash returns 403 (hourly quota exhausted
+ * on the free tier), further calls in this run are pointless. Flip the flag and
+ * short-circuit. Reset on `fetchImages` entry so tests / separate runs behave.
+ */
+let rateLimited = false;
+
 async function fetchSingleImage(accessKey: string, query: string): Promise<UnsplashImage | null> {
+  if (rateLimited) return null;
+
   try {
     const params = new URLSearchParams({
       query,
@@ -61,6 +70,10 @@ async function fetchSingleImage(accessKey: string, query: string): Promise<Unspl
 
     if (!response.ok) {
       console.warn(`Unsplash API error: ${response.status} ${response.statusText}`);
+      if (response.status === 403 || response.status === 429) {
+        rateLimited = true;
+        console.warn('  Unsplash rate limit hit — skipping remaining image fetches this run');
+      }
       return null;
     }
 
@@ -112,41 +125,24 @@ async function validateImageUrl(url: string): Promise<boolean> {
   }
 }
 
-/**
- * Simplify a query by taking only the first few meaningful words.
- * Helps when the original query is too specific for Unsplash.
- */
-function simplifyQuery(query: string): string {
-  const words = query.split(/\s+/).filter((w) => w.length > 2);
-  return words.slice(0, 3).join(' ');
-}
-
 export async function fetchImages(options: FetchImagesOptions): Promise<UnsplashImage[]> {
   const { accessKey, queries } = options;
   const images: UnsplashImage[] = [];
 
   for (let i = 0; i < queries.length; i++) {
     const query = queries[i];
-    let image = await fetchSingleImage(accessKey, query);
-
-    // Retry with simplified query if no result
-    if (!image) {
-      const simplified = simplifyQuery(query);
-      if (simplified !== query) {
-        console.warn(`  Retrying with simplified query: "${simplified}"`);
-        image = await fetchSingleImage(accessKey, simplified);
-      }
-    }
+    const image = await fetchSingleImage(accessKey, query);
 
     if (image) {
       images.push(image);
-    } else {
+    } else if (!rateLimited) {
       console.warn(`  No relevant image found for query "${query}" — skipping`);
     }
 
-    // Small delay to respect rate limits
+    // Spread calls out: Unsplash free tier is 50 req/h, so ~1s apart keeps
+    // bursts modest without making the full run painfully slow.
     if (i < queries.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 

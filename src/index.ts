@@ -8,6 +8,7 @@ import { generateTopics } from './topics/topic-generator.js';
 import { generateArticle, validateArticle } from './articles/article-generator.js';
 import { assembleHtml } from './articles/template.js';
 import { fetchImages, loadUsedImageIds, saveUsedImageIds } from './images/image-fetcher.js';
+import { buildImageQueries } from './images/query-builder.js';
 import { publishToBlogger } from './publisher/blogger.js';
 import { requestGoogleIndexing } from './publisher/google-indexing.js';
 import { fetchExistingTitles, isDuplicate, normalizeTitle } from './publisher/blog-checker.js';
@@ -193,29 +194,9 @@ async function main() {
 
       // 7c. Fetch images
       console.log('  Fetching images...');
-      const heroQuery = `${topic.category} travel landscape`;
-      const contentHeadings = article.headings.filter((h) => {
-        const lower = h.toLowerCase();
-        return !lower.includes('najczęściej zadawane') && !lower.includes('faq') && !lower.includes('podsumowanie');
-      });
-      const sectionQueries = contentHeadings.slice(0, 5).map((heading) => {
-        const cleanHeading = heading
-          .replace(/[?!.,;:()]/g, '')
-          .replace(/\d{4}/g, '')
-          .replace(/[ąćęłńóśźż]/g, (c) => {
-            const map: Record<string, string> = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z' };
-            return map[c] || c;
-          })
-          .trim()
-          .split(/\s+/)
-          .filter((w) => w.length > 2)
-          .slice(0, 4)
-          .join(' ');
-        return `${cleanHeading} ${topic.category} travel`;
-      });
       const images = await fetchImages({
         accessKey: config.unsplashAccessKey,
-        queries: [heroQuery, ...sectionQueries],
+        queries: buildImageQueries(topic, 4),
       });
       console.log(`  Found ${images.length} images`);
 

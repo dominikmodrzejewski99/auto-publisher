@@ -7,6 +7,7 @@ import { generateTopics } from '../topics/topic-generator.js';
 import { generateArticle, validateArticle } from '../articles/article-generator.js';
 import { assembleHtml } from '../articles/template.js';
 import { fetchImages } from '../images/image-fetcher.js';
+import { buildImageQueries } from '../images/query-builder.js';
 import { publishToBlogger } from '../publisher/blogger.js';
 import type { CategoriesData, PublishedData } from '../types.js';
 
@@ -68,14 +69,9 @@ async function main() {
 
   // 4. Fetch images — per section
   console.log('Fetching images...');
-  const heroQuery = `${topic.category} travel landscape`;
-  const sectionQueries = article.headings.slice(0, 5).map((heading) => {
-    const cleanHeading = heading.replace(/[?!.,;:()]/g, '').replace(/\d{4}/g, '').trim();
-    return `${cleanHeading} ${topic.category} travel`;
-  });
   const images = await fetchImages({
     accessKey: config.unsplashAccessKey,
-    queries: [heroQuery, ...sectionQueries],
+    queries: buildImageQueries(topic, 4),
   });
   console.log(`Found ${images.length} images`);
 
