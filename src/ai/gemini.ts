@@ -10,8 +10,8 @@ interface GeminiOptions {
 }
 
 const RETRYABLE_STATUSES = [429, 500, 503];
-const MAX_RETRIES = 3;
-const INITIAL_DELAY_MS = 5000;
+const MAX_RETRIES = 6;
+const INITIAL_DELAY_MS = 15000;
 
 export async function callGemini(options: GeminiOptions): Promise<string> {
   const {

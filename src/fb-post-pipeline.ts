@@ -48,7 +48,7 @@ async function fbPostToTopic(apiKey: string, fbPost: string): Promise<Topic> {
     apiKey,
     systemPrompt,
     userPrompt,
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.1-flash-lite-preview',
     maxTokens: 2048,
     temperature: 0.7,
     jsonMode: true,
